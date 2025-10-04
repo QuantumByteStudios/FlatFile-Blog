@@ -26,8 +26,10 @@ require_once __DIR__ . '/../libs/SecurityHardener.php';
 // Initialize security system
 SecurityHardener::init();
 
-// Start session
-session_start();
+// Start session if not already started
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // Check if already logged in
 if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true) {
@@ -46,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['admin_logged_in'] = true;
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         session_regenerate_id(true);
-        header('Location: ' . BASE_URL . 'admin');
+        header('Location: ' . BASE_URL . 'admin/');
         exit;
     } else {
         $error_message = 'Invalid username or password.';

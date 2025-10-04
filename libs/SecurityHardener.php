@@ -17,11 +17,13 @@ class SecurityHardener
      */
     public static function init()
     {
-        // Set secure session parameters
-        ini_set('session.cookie_httponly', 1);
-        ini_set('session.cookie_secure', 1);
-        ini_set('session.use_strict_mode', 1);
-        ini_set('session.cookie_samesite', 'Strict');
+        // Set secure session parameters only if session not started
+        if (session_status() === PHP_SESSION_NONE) {
+            ini_set('session.cookie_httponly', 1);
+            ini_set('session.cookie_secure', 1);
+            ini_set('session.use_strict_mode', 1);
+            ini_set('session.cookie_samesite', 'Strict');
+        }
         
         // Disable dangerous functions
         self::disableDangerousFunctions();
