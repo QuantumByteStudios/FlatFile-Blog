@@ -17,7 +17,7 @@ http_response_code(404);
 </head>
 
 <body>
-    <div class="container">
+    <div class="container p-5">
         <h1>404 - Page Not Found</h1>
         <p>The page you're looking for doesn't exist or has been moved.</p>
     </div>
