@@ -6,4 +6,4 @@ Disallow: /libs/
 Disallow: /uploads/
 Allow: /uploads/featured/
 
-Sitemap: http://localhost/blogs/sitemap
+Sitemap: http://localhost/FlatFile-Blog/sitemap

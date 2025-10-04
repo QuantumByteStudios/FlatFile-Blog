@@ -3,6 +3,12 @@
 /content/posts/*
 !/content/posts/sample.json
 
+# config.php
+/config.php
+
+# settings.json
+/content/settings.json
+
 # Generated files
 /content/index.json
 /content/search_index.json

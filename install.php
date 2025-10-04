@@ -528,7 +528,17 @@ Sitemap: " . rtrim($base_url, '/') . "/sitemap";
                                                 <i class="bi bi-link-45deg me-2"></i>Base URL
                                             </label>
                                             <input type="url" class="form-control" id="base_url" name="base_url"
-                                                value="<?php echo 'http://' . $_SERVER['HTTP_HOST'] . '/blogs'; ?>" required>
+                                                value="<?php
+                                                        $is_https = (
+                                                            (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+                                                            || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443)
+                                                            || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
+                                                        );
+                                                        $scheme = $is_https ? 'https://' : 'http://';
+                                                        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+                                                        $script_dir = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
+                                                        echo $scheme . $host . ($script_dir ? $script_dir : '');
+                                                        ?>" required>
                                             <div class="form-text">Your blog's URL</div>
                                         </div>
                                     </div>

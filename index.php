@@ -18,7 +18,7 @@ try {
     require_once 'functions.php';
 } catch (Exception $e) {
     error_log('Error loading functions.php: ' . $e->getMessage());
-    $error_message = (defined('DEBUG_MODE') && DEBUG_MODE)
+    $error_message = (defined('DEBUG_MODE') && constant('DEBUG_MODE'))
         ? 'Error loading functions: ' . $e->getMessage()
         : 'System error. Please try again later.';
     die($error_message);
@@ -89,7 +89,7 @@ $site_description = $settings['site_description'] ?? 'A simple, fast, and secure
                 <?php if (empty($posts)): ?>
                     <div class="alert alert-info mb-4">
                         <h4>No posts yet.</h4>
-                        <p>There are no blog posts to display. <a href="<?php echo BASE_URL; ?>admin">Create your first post</a> to get started!</p>
+                        <p>There are no blog posts to display. <a href="<?php echo BASE_URL; ?>admin/">Create your first post</a> to get started!</p>
                     </div>
                 <?php else: ?>
                     <div class="row">
@@ -179,11 +179,12 @@ $site_description = $settings['site_description'] ?? 'A simple, fast, and secure
         </div>
     </div>
 
-    <footer class="bg-dark text-light py-5 mt-5">
+    <!-- Footer -->
+    <footer class="bg-dark text-white py-3">
         <div class="container">
             <div class="row g-4">
                 <div class="col-lg-4">
-                    <h5 class="mb-3"><?php echo htmlspecialchars($page_title); ?></h5>
+                    <h5 class="mb-3"><?php echo SITE_TITLE; ?></h5>
                     <p class="mb-0 text-light-50"><?php echo htmlspecialchars($site_description); ?></p>
                 </div>
                 <div class="col-lg-4">
