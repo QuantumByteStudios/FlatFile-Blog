@@ -181,7 +181,7 @@ function handle_create_post()
     }
 
     $excerpt = trim($_POST['excerpt'] ?? '');
-    $status = in_array($_POST['status'] ?? '', ['published', 'draft']) ? $_POST['status'] : 'draft';
+    $status = in_array($_POST['status'] ?? '', ['published', 'draft']) ? $_POST['status'] : 'published';
     $date = $_POST['date'] ?? date('c');
     $author = trim($_POST['author'] ?? 'Admin');
 
@@ -208,7 +208,7 @@ function handle_create_post()
     }
 
     // Get content type (align with post.php/edit-post logic)
-    $content_type = $_POST['content_type'] ?? 'markdown';
+    $content_type = $_POST['content_type'] ?? 'html';
 
     // Create post data
     $post_data = [
