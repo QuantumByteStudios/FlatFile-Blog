@@ -81,7 +81,7 @@ function get_posts($page = 1, $per_page = 10, $status = 'published')
 
     foreach ($files as $file) {
         $post_data = json_decode(file_get_contents($file), true);
-        if ($post_data && $post_data['status'] === $status) {
+        if ($post_data && ($status === 'all' || $post_data['status'] === $status)) {
             $all_posts[] = $post_data;
         }
     }

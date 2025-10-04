@@ -50,7 +50,7 @@ if (isset($_GET['error'])) {
 }
 
 // Load dashboard data
-$all_posts = get_posts(1, 1000); // Get all posts
+$all_posts = get_posts(1, 1000, 'all'); // Get all posts (published and drafts)
 $published_posts = get_posts(1, 1000, 'published');
 $draft_posts = get_posts(1, 1000, 'draft');
 $total_posts = count($all_posts);
