@@ -131,14 +131,14 @@ switch ($action) {
 }
 
 // Redirect back to appropriate page with message
-$redirect_url = BASE_URL . 'admin';
+$redirect_url = BASE_URL . 'admin/';
 
 // Handle different redirects based on action
 if ($action === 'update') {
     $slug = $_POST['slug'] ?? '';
     $redirect_url = BASE_URL . 'admin/edit-post?slug=' . urlencode($slug);
 } elseif ($action === 'create') {
-    $redirect_url = BASE_URL . 'admin';
+    $redirect_url = BASE_URL . 'admin/';
 }
 
 if ($success_message) {

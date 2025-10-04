@@ -127,7 +127,7 @@ if (is_dir($backup_dir)) {
                         </h5>
                     </center>
                     <nav class="nav flex-column">
-                        <a class="nav-link text-light" href="<?php echo BASE_URL; ?>admin">
+                        <a class="nav-link text-light" href="<?php echo BASE_URL; ?>admin/">
                             <i class="bi bi-house"></i> Dashboard
                         </a>
                         <a class="nav-link text-light" href="<?php echo BASE_URL; ?>admin/new-post">

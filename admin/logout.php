@@ -4,6 +4,12 @@
  * Admin Logout
  */
 
+// Ensure config is loaded so BASE_URL exists
+$cfg = file_exists(__DIR__ . '/../config.php') ? __DIR__ . '/../config.php' : __DIR__ . '/config.php';
+if (file_exists($cfg)) {
+    require_once $cfg;
+}
+
 session_start();
 
 // Clear all session data
@@ -26,6 +32,7 @@ if (ini_get("session.use_cookies")) {
 // Destroy the session
 session_destroy();
 
-// Redirect to login page
-header('Location: ' . BASE_URL . 'admin/login');
+// Redirect to login page (fallback to relative if BASE_URL missing)
+$redirect = defined('BASE_URL') ? BASE_URL . 'admin/login' : 'login';
+header('Location: ' . $redirect);
 exit;

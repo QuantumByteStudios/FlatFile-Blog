@@ -370,20 +370,35 @@ sort($all_authors);
     </div>
 
     <!-- Footer -->
-    <footer class="bg-dark text-light mt-5 py-4">
+    <footer class="bg-dark text-white py-3">
         <div class="container">
-            <div class="row">
-                <div class="col-md-6">
-                    <p>&copy; <?php echo date('Y'); ?> <?php echo SITE_TITLE; ?>. All rights reserved.</p>
+            <div class="row g-4">
+                <div class="col-lg-4">
+                    <h5 class="mb-3"><?php echo SITE_TITLE; ?></h5>
+                    <p class="mb-0 text-light-50"><?php echo htmlspecialchars($site_description); ?></p>
                 </div>
-                <div class="col-md-6 text-end">
-                    <div class="d-flex align-items-center justify-content-end">
-                        <span class="text-muted me-2">Powered by</span>
-                        <img src="https://quantumbytestudios.in/src/images/white_transparent.png"
-                            alt="QuantumByte Studios"
-                            style="height: 24px; width: auto;">
-                    </div>
+                <div class="col-lg-4">
+                    <h6 class="mb-3">Quick Links</h6>
+                    <ul class="list-inline mb-0">
+                        <li class="list-inline-item me-3"><a class="text-light text-decoration-none" href="<?php echo BASE_URL; ?>">Home</a></li>
+                        <li class="list-inline-item me-3"><a class="text-light text-decoration-none" href="<?php echo BASE_URL; ?>search">Search</a></li>
+                        <li class="list-inline-item me-3"><a class="text-light text-decoration-none" href="<?php echo BASE_URL; ?>rss">RSS</a></li>
+                        <li class="list-inline-item"><a class="text-light text-decoration-none" href="<?php echo BASE_URL; ?>sitemap">Sitemap</a></li>
+                    </ul>
                 </div>
+                <div class="col-lg-4">
+                    <h6 class="mb-3">Contact</h6>
+                    <p class="mb-0 text-light-50">
+                        <a href="mailto:<?php echo htmlspecialchars($settings['admin_email']); ?>" class="text-light text-decoration-underline"><?php echo htmlspecialchars($settings['admin_email']); ?></a>
+                    </p>
+                </div>
+            </div>
+            <hr class="border-secondary my-4">
+            <div class="d-flex justify-content-between small">
+                <span>&copy; <?php echo date('Y'); ?> <?php echo htmlspecialchars($page_title); ?>. All rights reserved.</span>
+                <span>
+                    Powered by <a href="https://quantumbytestudios.in?ref=FlatFileBlogs" class="text-light text-decoration-underline">QuantumByte Studios</a>
+                </span>
             </div>
         </div>
     </footer>

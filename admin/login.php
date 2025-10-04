@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
 
-    if ($username === 'admin' && password_verify($password, ADMIN_PASSWORD_HASH)) {
+    if ($username === ADMIN_USERNAME && password_verify($password, ADMIN_PASSWORD_HASH)) {
         $_SESSION['admin_logged_in'] = true;
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         session_regenerate_id(true);
