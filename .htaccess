@@ -1,0 +1,41 @@
+# Enable rewrite engine
+RewriteEngine On
+
+# Security - Block access to sensitive files
+<Files "config.php">
+    Require all denied
+</Files>
+
+<Files "*.json">
+    Require all denied
+</Files>
+
+# Block access to logs and content directories
+RewriteRule ^logs/ - [F,L]
+RewriteRule ^content/ - [F,L]
+
+# Admin panel (no .php needed)
+RewriteRule ^admin/?$ admin/index.php [L,QSA]
+RewriteRule ^admin/login/?$ admin/login.php [L,QSA]
+RewriteRule ^admin/logout/?$ admin/logout.php [L,QSA]
+RewriteRule ^admin/new-post/?$ admin/new-post.php [L,QSA]
+RewriteRule ^admin/edit-post/?$ admin/edit-post.php [L,QSA]
+RewriteRule ^admin/settings/?$ admin/settings.php [L,QSA]
+
+# Public pages (no .php needed)
+RewriteRule ^search/?$ search.php [L,QSA]
+RewriteRule ^archive/?$ archive.php [L,QSA]
+RewriteRule ^rss/?$ rss.php [L,QSA]
+RewriteRule ^sitemap/?$ sitemap.php [L,QSA]
+
+# Blog posts by slug (no .php needed)
+RewriteRule ^([a-zA-Z0-9\-]+)/?$ post.php?slug=$1 [L,QSA]
+
+# Remove .php extension from URLs (only if the PHP file exists)
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME}.php -f
+RewriteRule ^(.+)$ $1.php [NC,L]
+
+# Default to index
+RewriteRule ^$ index.php [L,QSA]

@@ -1,0 +1,41 @@
+# User uploads and content
+/uploads/*
+/content/posts/*
+!/content/posts/sample.json
+
+# Generated files
+/content/index.json
+/content/search_index.json
+
+# Backup files
+/backups/*
+*.backup
+
+# Logs
+*.log
+/logs/*
+
+# Temporary files
+*.tmp
+*.temp
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# PHP session files
+sess_*
+
+# Environment files
+.env
+.env.local
+
+# Generated password file (remove after use)
+generate_password.php
