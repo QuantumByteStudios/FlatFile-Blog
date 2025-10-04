@@ -13,8 +13,10 @@ require_once 'tools/backup.php';
 // Initialize security system
 SecurityHardener::init();
 
-// Start session
-session_start();
+// Start session if not already started
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // Check if user is logged in
 if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
