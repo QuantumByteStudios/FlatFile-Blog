@@ -1,0 +1,9 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /content/
+Disallow: /logs/
+Disallow: /libs/
+Disallow: /uploads/
+Allow: /uploads/featured/
+
+Sitemap: http://localhost/blogs/sitemap
