@@ -50,22 +50,22 @@ if ($post['status'] !== 'published') {
 $content_type = $post['content_type'] ?? (isset($post['content_markdown']) ? 'markdown' : 'html');
 
 if ($content_type === 'html') {
-    $raw_content = $post['content_html'] ?? $post['content'] ?? '';
-    // Use HTML content directly
-    $html_content = $raw_content;
+	$raw_content = $post['content_html'] ?? $post['content'] ?? '';
+	// Use HTML content directly
+	$html_content = $raw_content;
 } else {
-    $raw_content = $post['content_markdown'] ?? $post['content'] ?? '';
-    // Render Markdown content (if Parsedown is available)
-    if (file_exists('libs/Parsedown.php')) {
-        require_once 'libs/Parsedown.php';
-        $parsedown = new Parsedown();
-        $parsedown->setBreaksEnabled(true);
-        $parsedown->setUrlsLinked(true);
-        $html_content = $parsedown->text($raw_content);
-    } else {
-        // Fallback to raw content if Parsedown not available
-        $html_content = nl2br(htmlspecialchars($raw_content));
-    }
+	$raw_content = $post['content_markdown'] ?? $post['content'] ?? '';
+	// Render Markdown content (if Parsedown is available)
+	if (file_exists('libs/Parsedown.php')) {
+		require_once 'libs/Parsedown.php';
+		$parsedown = new Parsedown();
+		$parsedown->setBreaksEnabled(true);
+		$parsedown->setUrlsLinked(true);
+		$html_content = $parsedown->text($raw_content);
+	} else {
+		// Fallback to raw content if Parsedown not available
+		$html_content = nl2br(htmlspecialchars($raw_content));
+	}
 }
 
 // Secure HTML sanitization for both HTML and Markdown content (if available)
@@ -155,7 +155,7 @@ $canonical_url = BASE_URL . urlencode($post['slug']);
 			"url": "<?php echo $canonical_url; ?>",
 			"keywords": "<?php echo !empty($post['tags']) ? htmlspecialchars(implode(', ', $post['tags'])) : ''; ?>",
 			"articleSection": "<?php echo !empty($post['categories']) ? htmlspecialchars(implode(', ', $post['categories'])) : 'General'; ?>",
-            "wordCount": "<?php echo str_word_count(strip_tags($raw_content)); ?>"
+			"wordCount": "<?php echo str_word_count(strip_tags($raw_content)); ?>"
 		}
 	</script>
 
@@ -169,14 +169,11 @@ $canonical_url = BASE_URL . urlencode($post['slug']);
 
 <body>
 	<!-- Navigation -->
-	<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+	<nav class="navbar navbar-expand-lg navbar-light bg-light">
 		<div class="container">
 			<a class="navbar-brand fw-bold" href="<?php echo BASE_URL; ?>">
 				<?php echo SITE_TITLE; ?>
 			</a>
-			<button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-				<span class="navbar-toggler-icon"></span>
-			</button>
 		</div>
 	</nav>
 
@@ -307,17 +304,21 @@ $canonical_url = BASE_URL . urlencode($post['slug']);
 	</div>
 
 	<!-- Footer -->
-	<footer class="bg-dark text-light mt-5 py-4">
+	<footer class="bg-light text-dark py-3 mt-5" style="bottom: 0; width: 100%;">
 		<div class="container">
 			<div class="row">
-				<div class="col-md-6">
-					<p>&copy; <?php echo date('Y'); ?> <?php echo SITE_TITLE; ?>. All rights reserved.</p>	
-				</div>
-				<div class="col-md-6 text-end">
-					<p>Powered by <a href="https://quantumbytestudios.in?ref=FlatFileBlogs" class="text-light text-decoration-underline">QuantumByte Studios</a></p>
+				<div class="col-12">
+					<span>&copy; <?php echo date('Y'); ?> <?php echo htmlspecialchars($page_title); ?>. All rights reserved.</span>
+					<br>
+					<span>
+						Powered by <a href="https://quantumbytestudios.in?ref=FlatFileBlogs" style="border-bottom: 1px solid #000;" class="text-dark text-decoration-none">QuantumByte Studios</a>
+					</span>
+					<br>
+					<span>
+						<a href="mailto:<?php echo htmlspecialchars($settings['admin_email']); ?>" style="border-bottom: 1px solid #000;" class="text-dark text-decoration-none"><?php echo htmlspecialchars($settings['admin_email']); ?></a>
+					</span>
 				</div>
 			</div>
-		</div>
 	</footer>
 
 	<!-- Bootstrap JS -->

@@ -1,4 +1,4 @@
-# Enable rewrite engine
+# Enable URL rewriting
 RewriteEngine On
 
 # Security - Block access to sensitive files
@@ -22,20 +22,20 @@ RewriteRule ^admin/new-post/?$ admin/new-post.php [L,QSA]
 RewriteRule ^admin/edit-post/?$ admin/edit-post.php [L,QSA]
 RewriteRule ^admin/settings/?$ admin/settings.php [L,QSA]
 
-# Public pages (no .php needed)
-RewriteRule ^search/?$ search.php [L,QSA]
-RewriteRule ^archive/?$ archive.php [L,QSA]
-RewriteRule ^rss/?$ rss.php [L,QSA]
-RewriteRule ^sitemap/?$ sitemap.php [L,QSA]
+# Check if the request is not a directory
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Check if the .php version of the file exists
+RewriteCond %{REQUEST_FILENAME}.php -f
+
+# Rewrite to the .php file
+RewriteRule ^(.*)$ $1.php [L]
 
 # Blog posts by slug (no .php needed)
 RewriteRule ^([a-zA-Z0-9\-]+)/?$ post.php?slug=$1 [L,QSA]
 
-# Remove .php extension from URLs (only if the PHP file exists)
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME}.php -f
-RewriteRule ^(.+)$ $1.php [NC,L]
-
 # Default to index
 RewriteRule ^$ index.php [L,QSA]
+
+# Custom error page for 404 errors
+ErrorDocument 404 /404.php

@@ -410,83 +410,50 @@ Sitemap: " . rtrim($base_url, '/') . "/sitemap";
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Install FlatFile Blog</title>
+	<title>Install - FlatFile Blog</title>
 	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 	<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
 </head>
 
 <body>
-	<div class="container py-5">
-		<div class="row justify-content-center">
+	<div class="container">
+		<div class="row d-flex justify-content-center align-items-center vh-100">
 			<div class="col-md-8">
 				<div class="card shadow">
-					<div class="card-header bg-dark text-white text-center">
-						<div class="mb-3">
-							<i class="bi bi-gear-fill display-4"></i>
-						</div>
-						<h1 class="h2 mb-2">FlatFile Blog Installer</h1>
-						<p class="mb-0">Set up your new flat-file blog system</p>
-					</div>
 					<div class="card-body">
 
 						<?php if ($already_installed && $_SERVER['REQUEST_METHOD'] !== 'POST'): ?>
 							<!-- Already Installed Warning -->
-							<div class="card mb-4">
-								<div class="card-header bg-warning text-dark">
-									<h5 class="mb-0">
-										<i class="bi bi-exclamation-triangle me-2"></i>
-										Blog Already Installed
-									</h5>
+							<div class="card border-0 p-5">
+								<h2 class="text-danger mb-4">
+									FlatFile Blog Already Installed!
+								</h2>
+								<div class="text-danger">
+									<p class="mb-3">
+										If you want to start fresh, you can delete the existing installation and reinstall. <strong>This will delete all your blog posts, settings, and uploaded files!</strong> Make sure to backup your data before doing this.
+									</p>
 								</div>
-								<div class="card-body">
-									<div class="alert alert-warning">
-										<h6><i class="bi bi-info-circle me-2"></i>Installation Detected</h6>
-										<p class="mb-3">A FlatFile blog installation has been detected on this server.</p>
-
-										<div class="row">
-											<div class="col-md-6">
-												<div class="d-grid">
-													<a href="." class="btn btn-success">
-														<i class="bi bi-house me-2"></i>View Blog
-													</a>
-												</div>
-											</div>
-											<div class="col-md-6">
-												<div class="d-grid">
-													<a href="admin" class="btn btn-primary">
-														<i class="bi bi-gear me-2"></i>Admin Panel
-													</a>
-												</div>
-											</div>
-										</div>
-									</div>
-
-									<div class="alert alert-danger">
-										<h6><i class="bi bi-exclamation-triangle me-2"></i>Reinstall Option</h6>
-										<p class="mb-3">If you want to start fresh, you can delete the existing installation and reinstall. <strong>This will delete all your blog posts, settings, and uploaded files!</strong></p>
-
-										<form method="POST" class="d-inline">
-											<input type="hidden" name="action" value="reinstall">
-											<button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete the existing installation? This action cannot be undone!')">
-												<i class="bi bi-trash me-2"></i>Delete & Reinstall
-											</button>
-										</form>
-									</div>
-								</div>
+								<form method="POST" class="d-inline">
+									<input type="hidden" name="action" value="reinstall">
+									<button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete the existing installation? This action cannot be undone!')">
+										<i class="bi bi-trash me-2"></i>
+										Delete & Reinstall
+									</button>
+								</form>
 							</div>
 						<?php elseif ($_SERVER['REQUEST_METHOD'] === 'POST'): ?>
 							<!-- Installation Results -->
-							<div class="card mb-4">
-								<div class="card-header bg-<?php echo $success ? 'success' : 'danger'; ?> text-white">
+							<div class="card border-0 mb-4">
+								<!-- <div class="card-header bg-<?php echo $success ? 'success' : 'danger'; ?> text-white">
 									<h5 class="mb-0">
 										<i class="bi bi-<?php echo $success ? 'check-circle' : 'exclamation-triangle'; ?> me-2"></i>
 										Installation <?php echo $success ? 'Successful' : 'Failed'; ?>
 									</h5>
-								</div>
+								</div> -->
 								<div class="card-body">
 									<?php if (!empty($errors)): ?>
-										<div class="alert alert-danger">
-											<h6>Errors:</h6>
+										<div class="text-danger">
+											<h6 class="mb-3">Errors:</h6>
 											<ul class="mb-0">
 												<?php foreach ($errors as $error): ?>
 													<li><?php echo htmlspecialchars($error); ?></li>
@@ -495,7 +462,7 @@ Sitemap: " . rtrim($base_url, '/') . "/sitemap";
 										</div>
 									<?php endif; ?>
 
-									<h6>Installation Steps:</h6>
+									<h6 class="mb-3">Installation Steps:</h6>
 									<div class="list-group">
 										<?php foreach ($installation_steps as $step): ?>
 											<div class="list-group-item d-flex align-items-center">
@@ -507,32 +474,26 @@ Sitemap: " . rtrim($base_url, '/') . "/sitemap";
 
 									<?php if ($success): ?>
 										<div class="mt-4">
-											<div class="alert alert-success">
-												<h6><i class="bi bi-check-circle me-2"></i>Installation Complete!</h6>
-												<p class="mb-2">Your FlatFile blog has been successfully installed.</p>
-												<div class="d-grid gap-2 d-md-flex">
-													<a href="." class="btn btn-success">
-														<i class="bi bi-house me-2"></i>View Blog
+											<div class="text-success">
+												<p class="mb-2">
+													Your FlatFile blog has been successfully installed.
+													<br><br>
+													<a href="admin/" class="btn btn-dark">
+														Complete Setup
 													</a>
-													<a href="admin/" class="btn btn-primary">
-														<i class="bi bi-gear me-2"></i>Admin Panel
-													</a>
-												</div>
+												</p>
 											</div>
-
-											<div class="alert alert-info">
-												<h6><i class="bi bi-info-circle me-2"></i>Next Steps:</h6>
-												<ul class="mb-0">
-													<li>Delete this <code>install.php</code> file for security</li>
-													<li>Customize your blog settings in the admin panel</li>
-													<li>Create your first blog post</li>
-													<li>Set up your domain and hosting</li>
-												</ul>
+										</div>
+										<div class="mt-4">
+											<div class="alert alert-warning text-dark">
+												<h6 class="mb-0">
+													Please delete this <code>install.php</code> file for security reasons.
+												</h6>
 											</div>
 										</div>
 									<?php else: ?>
 										<div class="mt-4">
-											<div class="alert alert-danger">
+											<div class="text-danger">
 												<h6><i class="bi bi-exclamation-triangle me-2"></i>Installation Failed</h6>
 												<p>Please fix the errors above and try again.</p>
 												<a href="install.php" class="btn btn-danger">
@@ -646,7 +607,7 @@ Sitemap: " . rtrim($base_url, '/') . "/sitemap";
 									</div>
 								</div>
 
-								<div class="alert alert-info">
+								<div class="text-info">
 									<h6><i class="bi bi-info-circle me-2"></i>What will be installed:</h6>
 									<ul class="mb-0">
 										<li>Blog system files and directories</li>

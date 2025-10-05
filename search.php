@@ -105,7 +105,7 @@ sort($all_authors);
 
 <body>
     <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark" style="background: linear-gradient(135deg, #000 0%, #333 100%); box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
         <div class="container">
             <a class="navbar-brand fw-bold" href="<?php echo BASE_URL; ?>">
                 <?php echo SITE_TITLE; ?>
@@ -132,7 +132,7 @@ sort($all_authors);
             <div class="row justify-content-center">
                 <div class="col-lg-8 text-center">
                     <div class="d-flex align-items-center justify-content-center mb-4">
-                        <i class="bi bi-search me-3" style="font-size: 3rem; color: #000;"></i>
+                        <i class="bi bi-search me-3" style="font-size: 3rem; color: #333;"></i>
                         <div>
                             <h1 class="display-5 fw-bold mb-2">Search Posts</h1>
                             <p class="lead text-muted mb-0">Find exactly what you're looking for</p>
@@ -147,7 +147,7 @@ sort($all_authors);
                                     <input type="text" class="form-control form-control-lg" name="q"
                                         value="<?php echo htmlspecialchars($query); ?>"
                                         placeholder="Search for posts, tags, authors..."
-                                        style="border-radius: 50px 0 0 50px; border: 2px solid #000; box-shadow: none; font-size: 1.1rem; padding: 1rem 1.5rem;">
+                                        style="border-radius: 50px 0 0 50px; border: 2px solid #333; box-shadow: none; font-size: 1.1rem; padding: 1rem 1.5rem;">
                                     <button class="btn btn-dark" type="submit" style="border-radius: 0 50px 50px 0; padding: 1rem 2.5rem; font-size: 1.1rem;">
                                         <i class="bi bi-search me-2"></i>Search
                                     </button>
@@ -370,26 +370,26 @@ sort($all_authors);
     </div>
 
     <!-- Footer -->
-    <footer class="bg-dark text-white py-3">
+    <footer class="bg-light text-dark py-3 mt-5">
         <div class="container">
             <div class="row g-4">
                 <div class="col-lg-4">
                     <h5 class="mb-3"><?php echo SITE_TITLE; ?></h5>
-                    <p class="mb-0 text-light-50"><?php echo htmlspecialchars($site_description); ?></p>
+                    <p class="mb-0 text-dark"><?php echo htmlspecialchars($site_description); ?></p>
                 </div>
                 <div class="col-lg-4">
                     <h6 class="mb-3">Quick Links</h6>
                     <ul class="list-inline mb-0">
-                        <li class="list-inline-item me-3"><a class="text-light text-decoration-none" href="<?php echo BASE_URL; ?>">Home</a></li>
-                        <li class="list-inline-item me-3"><a class="text-light text-decoration-none" href="<?php echo BASE_URL; ?>search">Search</a></li>
-                        <li class="list-inline-item me-3"><a class="text-light text-decoration-none" href="<?php echo BASE_URL; ?>rss">RSS</a></li>
-                        <li class="list-inline-item"><a class="text-light text-decoration-none" href="<?php echo BASE_URL; ?>sitemap">Sitemap</a></li>
+                        <li class="list-inline-item me-3"><a class="text-dark text-decoration-none" href="<?php echo BASE_URL; ?>">Home</a></li>
+                        <li class="list-inline-item me-3"><a class="text-dark text-decoration-none" href="<?php echo BASE_URL; ?>search">Search</a></li>
+                        <li class="list-inline-item me-3"><a class="text-dark text-decoration-none" href="<?php echo BASE_URL; ?>rss">RSS</a></li>
+                        <li class="list-inline-item"><a class="text-dark text-decoration-none" href="<?php echo BASE_URL; ?>sitemap">Sitemap</a></li>
                     </ul>
                 </div>
                 <div class="col-lg-4">
                     <h6 class="mb-3">Contact</h6>
-                    <p class="mb-0 text-light-50">
-                        <a href="mailto:<?php echo htmlspecialchars($settings['admin_email']); ?>" class="text-light text-decoration-underline"><?php echo htmlspecialchars($settings['admin_email']); ?></a>
+                    <p class="mb-0 text-dark">
+                        <a href="mailto:<?php echo htmlspecialchars($settings['admin_email']); ?>" class="text-white text-decoration-underline"><?php echo htmlspecialchars($settings['admin_email']); ?></a>
                     </p>
                 </div>
             </div>
@@ -397,7 +397,7 @@ sort($all_authors);
             <div class="d-flex justify-content-between small">
                 <span>&copy; <?php echo date('Y'); ?> <?php echo htmlspecialchars($page_title); ?>. All rights reserved.</span>
                 <span>
-                    Powered by <a href="https://quantumbytestudios.in?ref=FlatFileBlogs" class="text-light text-decoration-underline">QuantumByte Studios</a>
+                    Powered by <a href="https://quantumbytestudios.in?ref=FlatFileBlogs" class="text-white text-decoration-underline">QuantumByte Studios</a>
                 </span>
             </div>
         </div>
