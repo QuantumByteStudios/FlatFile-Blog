@@ -56,24 +56,11 @@ $site_description = $settings['site_description'] ?? 'A simple, fast, and secure
 
 <body>
     <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark" style="background: linear-gradient(135deg, #000 0%, #333 100%); box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
         <div class="container">
             <a class="navbar-brand fw-bold" href="<?php echo BASE_URL; ?>">
                 <?php echo SITE_TITLE; ?>
             </a>
-            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link fw-500 active" href="<?php echo BASE_URL; ?>">Home</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link fw-500" href="<?php echo BASE_URL; ?>search">Search</a>
-                    </li>
-                </ul>
-            </div>
         </div>
     </nav>
 
@@ -87,9 +74,8 @@ $site_description = $settings['site_description'] ?? 'A simple, fast, and secure
                 </h2>
 
                 <?php if (empty($posts)): ?>
-                    <div class="alert alert-info mb-4">
+                    <div class="alert py-5 mb-4">
                         <h4>No posts yet.</h4>
-                        <p>There are no blog posts to display. <a href="<?php echo BASE_URL; ?>admin/">Create your first post</a> to get started!</p>
                     </div>
                 <?php else: ?>
                     <div class="row">
@@ -180,37 +166,21 @@ $site_description = $settings['site_description'] ?? 'A simple, fast, and secure
     </div>
 
     <!-- Footer -->
-    <footer class="bg-dark text-white py-3">
+    <footer class="bg-light text-dark py-3 mt-5" style="bottom: 0; width: 100%;">
         <div class="container">
-            <div class="row g-4">
-                <div class="col-lg-4">
-                    <h5 class="mb-3"><?php echo SITE_TITLE; ?></h5>
-                    <p class="mb-0 text-light-50"><?php echo htmlspecialchars($site_description); ?></p>
-                </div>
-                <div class="col-lg-4">
-                    <h6 class="mb-3">Quick Links</h6>
-                    <ul class="list-inline mb-0">
-                        <li class="list-inline-item me-3"><a class="text-light text-decoration-none" href="<?php echo BASE_URL; ?>">Home</a></li>
-                        <li class="list-inline-item me-3"><a class="text-light text-decoration-none" href="<?php echo BASE_URL; ?>search">Search</a></li>
-                        <li class="list-inline-item me-3"><a class="text-light text-decoration-none" href="<?php echo BASE_URL; ?>rss">RSS</a></li>
-                        <li class="list-inline-item"><a class="text-light text-decoration-none" href="<?php echo BASE_URL; ?>sitemap">Sitemap</a></li>
-                    </ul>
-                </div>
-                <div class="col-lg-4">
-                    <h6 class="mb-3">Contact</h6>
-                    <p class="mb-0 text-light-50">
-                        <a href="mailto:<?php echo htmlspecialchars($settings['admin_email']); ?>" class="text-light text-decoration-underline"><?php echo htmlspecialchars($settings['admin_email']); ?></a>
-                    </p>
+            <div class="row">
+                <div class="col-12">
+                    <span>&copy; <?php echo date('Y'); ?> <?php echo htmlspecialchars($page_title); ?>. All rights reserved.</span>
+                    <br>
+                    <span>
+                        Powered by <a href="https://quantumbytestudios.in?ref=FlatFileBlogs" style="border-bottom: 1px solid #000;" class="text-dark text-decoration-none">QuantumByte Studios</a>
+                    </span>
+                    <br>
+                    <span>
+                        <a href="mailto:<?php echo htmlspecialchars($settings['admin_email']); ?>" style="border-bottom: 1px solid #000;" class="text-dark text-decoration-none"><?php echo htmlspecialchars($settings['admin_email']); ?></a>
+                    </span>
                 </div>
             </div>
-            <hr class="border-secondary my-4">
-            <div class="d-flex justify-content-between small">
-                <span>&copy; <?php echo date('Y'); ?> <?php echo htmlspecialchars($page_title); ?>. All rights reserved.</span>
-                <span>
-                    Powered by <a href="https://quantumbytestudios.in?ref=FlatFileBlogs" class="text-light text-decoration-underline">QuantumByte Studios</a>
-                </span>
-            </div>
-        </div>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
