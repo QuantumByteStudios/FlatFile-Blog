@@ -15,6 +15,7 @@ if (!file_exists('config.php')) {
 define('ALLOW_DIRECT_ACCESS', true);
 
 try {
+	require_once 'config.php';
 	require_once 'functions.php';
 } catch (Exception $e) {
 	error_log('Error loading functions.php: ' . $e->getMessage());
@@ -308,7 +309,7 @@ $canonical_url = BASE_URL . urlencode($post['slug']);
 		<div class="container">
 			<div class="row">
 				<div class="col-12">
-					<span>&copy; <?php echo date('Y'); ?> <?php echo htmlspecialchars($page_title); ?>. All rights reserved.</span>
+					<span>&copy; <?php echo date('Y'); ?> <?php echo htmlspecialchars(SITE_TITLE); ?>. All rights reserved.</span>
 					<br>
 					<span>
 						Powered by <a href="https://quantumbytestudios.in?ref=FlatFileBlogs" style="border-bottom: 1px solid #000;" class="text-dark text-decoration-none">QuantumByte Studios</a>
