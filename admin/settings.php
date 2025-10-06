@@ -46,6 +46,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $openai_api_key = trim($_POST['openai_api_key'] ?? ($existing_settings['openai_api_key'] ?? ''));
             $openai_model = trim($_POST['openai_model'] ?? ($existing_settings['openai_model'] ?? 'openai/gpt-4o-mini'));
             $openai_endpoint = trim($_POST['openai_endpoint'] ?? ($existing_settings['openai_endpoint'] ?? 'https://models.github.ai/inference'));
+            $updater_repo = trim($_POST['updater_repo'] ?? ($existing_settings['updater_repo'] ?? ''));
+            $updater_branch = trim($_POST['updater_branch'] ?? ($existing_settings['updater_branch'] ?? 'main'));
+            $updater_token = trim($_POST['updater_token'] ?? ($existing_settings['updater_token'] ?? ''));
+            $updater_url = trim($_POST['updater_url'] ?? ($existing_settings['updater_url'] ?? ''));
+            $updater_checksum = trim($_POST['updater_checksum'] ?? ($existing_settings['updater_checksum'] ?? ''));
 
             // Merge updated settings
             $settings = array_merge($existing_settings, [
@@ -57,6 +62,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 'openai_api_key' => $openai_api_key,
                 'openai_model' => $openai_model,
                 'openai_endpoint' => $openai_endpoint,
+                'updater_repo' => $updater_repo,
+                'updater_branch' => $updater_branch,
+                'updater_token' => $updater_token,
+                'updater_url' => $updater_url,
+                'updater_checksum' => $updater_checksum,
                 'updated' => date('c')
             ]);
 
@@ -91,7 +101,12 @@ $settings = array_merge([
     'business_info' => '',
     'openai_api_key' => '',
     'openai_model' => 'openai/gpt-4o-mini',
-    'openai_endpoint' => 'https://models.github.ai/inference'
+    'openai_endpoint' => 'https://models.github.ai/inference',
+    'updater_repo' => '',
+    'updater_branch' => 'main',
+    'updater_token' => '',
+    'updater_url' => '',
+    'updater_checksum' => ''
 ], $current_settings);
 
 // Function to update config.php
@@ -255,6 +270,42 @@ function update_config_site_title($new_title)
                                                             <div class="form-text">Used to personalize AI-generated posts.</div>
                                                         </div>
                                                     </div>
+
+								<!-- Updater Settings -->
+								<div class="card mb-3">
+									<div class="card-header">
+										<h5 class="mb-0"><i class="bi bi-cloud-arrow-down"></i> Self-Updater</h5>
+									</div>
+									<div class="card-body">
+										<div class="mb-3">
+											<label for="updater_repo" class="form-label">GitHub Repository (owner/repo)</label>
+											<input type="text" class="form-control" id="updater_repo" name="updater_repo" value="<?php echo htmlspecialchars($settings['updater_repo']); ?>" placeholder="owner/repo">
+										</div>
+										<div class="row">
+											<div class="col-md-6 mb-3">
+												<label for="updater_branch" class="form-label">Branch</label>
+												<input type="text" class="form-control" id="updater_branch" name="updater_branch" value="<?php echo htmlspecialchars($settings['updater_branch']); ?>" placeholder="main">
+											</div>
+											<div class="col-md-6 mb-3">
+												<label for="updater_token" class="form-label">GitHub Token (optional)</label>
+												<input type="password" class="form-control" id="updater_token" name="updater_token" placeholder="Token for private repo">
+												<div class="form-text">Stored server-side. Leave blank to keep current.</div>
+											</div>
+										</div>
+
+										<hr>
+										<div class="mb-3">
+											<label for="updater_url" class="form-label">Public Update URL (ZIP)</label>
+											<input type="url" class="form-control" id="updater_url" name="updater_url" value="<?php echo htmlspecialchars($settings['updater_url']); ?>" placeholder="https://.../latest.zip">
+											<div class="form-text">If set, updater can fetch updates without any token.</div>
+										</div>
+										<div class="mb-3">
+											<label for="updater_checksum" class="form-label">ZIP SHA-256 Checksum (optional)</label>
+											<input type="text" class="form-control" id="updater_checksum" name="updater_checksum" value="<?php echo htmlspecialchars($settings['updater_checksum']); ?>" placeholder="sha256 hex">
+											<div class="form-text">Verifies integrity of the downloaded ZIP.</div>
+										</div>
+									</div>
+								</div>
                                                 </div>
 
                                                 <div class="d-grid">
