@@ -78,6 +78,21 @@ class SelfUpdater
     public static function updateFromGitHub($repo, $branch, $token)
     {
         $repo = trim($repo);
+        // Strip accidental leading '@' from pasted handles/links
+        $repo = ltrim($repo, "@ \t\n\r\0\x0B");
+        // Normalize: allow full GitHub URL or owner/repo
+        if (stripos($repo, 'github.com') !== false) {
+            $u = @parse_url($repo);
+            $p = isset($u['path']) ? trim($u['path'], "/ ") : '';
+            if ($p !== '') {
+                $seg = explode('/', $p);
+                if (count($seg) >= 2) {
+                    $ownerPart = $seg[0];
+                    $repoPart = preg_replace('/\.git$/i', '', $seg[1]);
+                    $repo = $ownerPart . '/' . $repoPart;
+                }
+            }
+        }
         $branch = trim($branch ?: 'main');
         if ($repo === '') {
             return ['success' => false, 'error' => 'Updater repo not configured'];
@@ -96,7 +111,14 @@ class SelfUpdater
             return ['success' => false, 'error' => 'Invalid repo format. Use owner/repo'];
         }
         list($owner, $name) = explode('/', $repo, 2);
-        $zipUrl = 'https://api.github.com/repos/' . rawurlencode($owner) . '/' . rawurlencode($name) . '/zipball/' . rawurlencode($branch);
+        $zipUrls = [
+            // API zipball (redirects to blob store)
+            'https://api.github.com/repos/' . rawurlencode($owner) . '/' . rawurlencode($name) . '/zipball/' . rawurlencode($branch),
+            // Codeload direct
+            'https://codeload.github.com/' . rawurlencode($owner) . '/' . rawurlencode($name) . '/zip/refs/heads/' . rawurlencode($branch),
+            // Web archive URL
+            'https://github.com/' . rawurlencode($owner) . '/' . rawurlencode($name) . '/archive/refs/heads/' . rawurlencode($branch) . '.zip'
+        ];
         $tmpDir = CONTENT_DIR . 'tmp_updater/';
         $zipFile = $tmpDir . 'update.zip';
         $extractDir = $tmpDir . 'extract/';
@@ -106,9 +128,18 @@ class SelfUpdater
             @mkdir($tmpDir, 0755, true);
         }
 
-        $dl = self::download($zipUrl, $zipFile, $token);
-        if (!$dl['success']) {
-            return $dl;
+        $lastError = '';
+        $downloaded = false;
+        foreach ($zipUrls as $tryUrl) {
+            $dl = self::download($tryUrl, $zipFile, $token);
+            if ($dl['success']) {
+                $downloaded = true;
+                break;
+            }
+            $lastError = $dl['error'] ?? 'Download failed';
+        }
+        if (!$downloaded) {
+            return ['success' => false, 'error' => $lastError ?: 'Download failed'];
         }
 
         $ok = self::unzip($zipFile, $extractDir);
@@ -116,12 +147,14 @@ class SelfUpdater
             return $ok;
         }
 
-        // The zipball contains a single top-level directory with unknown name
-        $entries = glob($extractDir . '*', GLOB_ONLYDIR);
-        if (!$entries || !is_dir($entries[0])) {
-            return ['success' => false, 'error' => 'Unexpected archive structure'];
+        // Prefer the first top-level directory, but allow flat archives too
+        $dirEntries = glob($extractDir . '*', GLOB_ONLYDIR);
+        if ($dirEntries && is_dir($dirEntries[0])) {
+            $sourceDir = rtrim($dirEntries[0], '\/');
+        } else {
+            // Some GitHub/codeload zips may extract files directly under extractDir
+            $sourceDir = rtrim($extractDir, '\/');
         }
-        $sourceDir = rtrim($entries[0], '\/');
 
         // Copy files, excluding user content and sensitive files
         $excludes = [
