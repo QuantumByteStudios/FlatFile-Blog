@@ -124,8 +124,11 @@ if (isset($_GET['error'])) {
                             <div class="col-lg-8">
                                 <!-- Main Content -->
                                 <div class="card mb-4">
-                                    <div class="card-header">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
                                         <h5 class="mb-0">Post Content</h5>
+                                        <button style="background: linear-gradient(50deg, #c77dff 0%, #e0aaff 100%); color: white; border: 1px solid #c77dff" type="button" class="btn" data-bs-toggle="modal" data-bs-target="#aiModal">
+                                            <i class="bi bi-stars"></i> Generate with AI
+                                        </button>
                                     </div>
                                     <div class="card-body">
                                         <div class="mb-3">
@@ -150,8 +153,8 @@ if (isset($_GET['error'])) {
                                         <div class="mb-3">
                                             <label for="content_type" class="form-label">Content Type</label>
                                             <select class="form-select" id="content_type" name="content_type" onchange="toggleContentType()">
-                                                <option value="markdown" <?php echo ($content_type ?? 'markdown') === 'markdown' ? 'selected' : ''; ?>>Markdown</option>
-                                                <option value="html" <?php echo ($content_type ?? '') === 'html' ? 'selected' : ''; ?>>HTML</option>
+                                                <option value="html" <?php echo ($content_type ?? 'html') === 'html' ? 'selected' : ''; ?>>HTML</option>
+                                                <option value="markdown" <?php echo ($content_type ?? 'html') === 'markdown' ? 'selected' : ''; ?>>Markdown</option>
                                             </select>
                                         </div>
 
@@ -234,6 +237,33 @@ if (isset($_GET['error'])) {
                             </div>
                         </div>
                     </form>
+
+                    <!-- AI Modal -->
+                    <div class="modal fade" id="aiModal" tabindex="-1" aria-labelledby="aiModalLabel" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="aiModalLabel"><i class="bi bi-stars"></i> Generate Blog with AI</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="mb-3">
+                                        <label for="ai_topic" class="form-label">Topic</label>
+                                        <input type="text" class="form-control" id="ai_topic" placeholder="e.g. Local SEO tips for dentists">
+                                        <div class="form-text">Describe the topic you want a blog about.</div>
+                                    </div>
+                                    <div id="ai_error" class="alert alert-danger d-none" role="alert"></div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    <button type="button" id="ai_generate_btn" class="btn btn-primary">
+                                        <span class="spinner-border spinner-border-sm d-none" id="ai_spinner" role="status" aria-hidden="true"></span>
+                                        <span id="ai_generate_text">Generate</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -257,13 +287,86 @@ if (isset($_GET['error'])) {
             const contentTextarea = document.getElementById('content');
 
             if (contentType === 'html') {
-                contentHelp.innerHTML = '<strong>HTML supported:</strong> Use HTML tags like &lt;h1&gt;, &lt;p&gt;, &lt;img&gt;, &lt;a&gt;, etc.';
+                contentHelp.innerHTML = '<strong>HTML supported:</strong> Use only <h1>, <h2>, <h3>, <p>.';
                 contentTextarea.placeholder = 'Write your post content in HTML...';
             } else {
                 contentHelp.innerHTML = '<strong>Markdown supported:</strong> Use **bold**, *italic*, `code`, [links](url), # headers, etc.';
                 contentTextarea.placeholder = 'Write your post content in Markdown...';
             }
         }
+
+        // AI Generate flow
+        (function() {
+            const btn = document.getElementById('ai_generate_btn');
+            const spinner = document.getElementById('ai_spinner');
+            const btnText = document.getElementById('ai_generate_text');
+            const errorBox = document.getElementById('ai_error');
+            const aiTopic = document.getElementById('ai_topic');
+
+            function setLoading(isLoading) {
+                if (isLoading) {
+                    spinner.classList.remove('d-none');
+                    btnText.textContent = 'Generating…';
+                    btn.disabled = true;
+                } else {
+                    spinner.classList.add('d-none');
+                    btnText.textContent = 'Generate';
+                    btn.disabled = false;
+                }
+            }
+
+            btn.addEventListener('click', async function() {
+                errorBox.classList.add('d-none');
+                errorBox.textContent = '';
+                const topic = (aiTopic.value || '').trim();
+                if (!topic) {
+                    errorBox.textContent = 'Please enter a topic.';
+                    errorBox.classList.remove('d-none');
+                    return;
+                }
+                setLoading(true);
+                try {
+                    const resp = await fetch('<?php echo BASE_URL; ?>admin_action?action=generate_ai_post&topic=' + encodeURIComponent(topic), {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json'
+                        },
+                        credentials: 'same-origin'
+                    });
+                    const data = await resp.json();
+                    if (!data.success) {
+                        throw new Error(data.error || 'Generation failed');
+                    }
+                    // Populate fields
+                    document.getElementById('title').value = data.title || '';
+                    document.getElementById('excerpt').value = data.excerpt || '';
+                    const tagsField = document.getElementById('tags');
+                    if (Array.isArray(data.tags)) {
+                        tagsField.value = data.tags.join(', ');
+                    }
+                    const catsField = document.getElementById('categories');
+                    if (Array.isArray(data.categories)) {
+                        catsField.value = data.categories.join(', ');
+                    }
+                    if (data.slug) {
+                        document.getElementById('slug').value = data.slug;
+                    }
+                    document.getElementById('content_type').value = 'html';
+                    toggleContentType();
+                    document.getElementById('content').value = data.content_html || '';
+
+                    // Close modal
+                    const modalEl = document.getElementById('aiModal');
+                    const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                    modal.hide();
+                } catch (e) {
+                    errorBox.textContent = e.message || 'Generation error';
+                    errorBox.classList.remove('d-none');
+                } finally {
+                    setLoading(false);
+                }
+            });
+        })();
     </script>
 </body>
 

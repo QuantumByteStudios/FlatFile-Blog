@@ -7,7 +7,8 @@
 
 require_once 'functions.php';
 require_once __DIR__ . '/libs/SecurityHardener.php';
-require_once __DIR__ . '/libs/MonitoringSystem.php';
+// Removed unused MonitoringSystem and GoogleAIClient
+require_once __DIR__ . '/libs/OpenAIClient.php';
 
 // Initialize security system
 SecurityHardener::init();
@@ -58,6 +59,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action'])) {
         }
         exit;
     }
+
+	// Generate AI post content
+	if ($action === 'generate_ai_post') {
+		header('Content-Type: application/json');
+		// Avoid leaking PHP warnings/notices into JSON
+		if (function_exists('ob_get_level') && ob_get_level() > 0) {
+			ob_clean();
+		}
+		ini_set('display_errors', '0');
+
+		if (!extension_loaded('curl')) {
+			echo json_encode(['success' => false, 'error' => 'Server missing PHP cURL extension. Enable it in php.ini and restart Apache.']);
+			exit;
+		}
+		$topic = trim($_GET['topic'] ?? '');
+		if ($topic === '') {
+			echo json_encode(['success' => false, 'error' => 'Topic is required']);
+			exit;
+		}
+
+		$settings = load_settings();
+		$businessInfo = trim($settings['business_info'] ?? '');
+
+		try {
+			$openaiKey = trim($settings['openai_api_key'] ?? '');
+			$openaiModel = trim($settings['openai_model'] ?? 'openai/gpt-4o-mini');
+			$openaiEndpoint = trim($settings['openai_endpoint'] ?? 'https://models.github.ai/inference');
+			if ($openaiKey === '') {
+				echo json_encode(['success' => false, 'error' => 'OpenAI token not configured. Add it in Settings.']);
+				exit;
+			}
+			$client = new OpenAIClient($openaiKey, $openaiModel, $openaiEndpoint);
+			$result = $client->generateBlogContent($topic, $businessInfo);
+		} catch (Throwable $e) {
+			echo json_encode(['success' => false, 'error' => 'Server error: ' . $e->getMessage()]);
+			exit;
+		}
+		if (!($result['success'] ?? false)) {
+			echo json_encode(['success' => false, 'error' => $result['error'] ?? 'AI generation failed']);
+			exit;
+		}
+
+			echo json_encode([
+				'success' => true,
+				'title' => $result['title'] ?? '',
+				'excerpt' => $result['excerpt'] ?? '',
+				'tags' => $result['tags'] ?? [],
+				'categories' => $result['categories'] ?? [],
+				'slug' => isset($result['title']) ? slugify($result['title']) : '',
+				'content_html' => $result['content_html'] ?? ''
+			]);
+		exit;
+	}
 }
 
 // Verify CSRF token for POST requests
