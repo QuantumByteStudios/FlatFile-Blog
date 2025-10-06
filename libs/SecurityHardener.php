@@ -20,7 +20,12 @@ class SecurityHardener
         // Set secure session parameters only if session not started
         if (session_status() === PHP_SESSION_NONE) {
             ini_set('session.cookie_httponly', 1);
-            ini_set('session.cookie_secure', 1);
+            // Only force secure cookies when site is served over HTTPS
+            $is_https = (
+                (isset($_SERVER['HTTPS']) && ($_SERVER['HTTPS'] === 'on' || $_SERVER['HTTPS'] === '1')) ||
+                (isset($_SERVER['SERVER_PORT']) && (string)$_SERVER['SERVER_PORT'] === '443')
+            );
+            ini_set('session.cookie_secure', $is_https ? 1 : 0);
             ini_set('session.use_strict_mode', 1);
             ini_set('session.cookie_samesite', 'Strict');
         }

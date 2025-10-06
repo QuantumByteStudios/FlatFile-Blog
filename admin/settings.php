@@ -16,6 +16,11 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Ensure CSRF token exists for this form
+if (!isset($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
 // Check if user is logged in
 if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
     header('Location: login');
@@ -29,17 +34,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
             $error_message = "Invalid CSRF token.";
         } else {
-            // Update settings
-            $settings = [
+            // Load existing settings to preserve unknown keys and keep API key when empty
+            $settings_file = CONTENT_DIR . 'settings.json';
+            $existing_settings = [];
+            if (file_exists($settings_file)) {
+                $existing_settings = json_decode(file_get_contents($settings_file), true) ?: [];
+            }
+
+            // Compute sensitive and optional fields
+            $business_info = trim($_POST['business_info'] ?? ($existing_settings['business_info'] ?? ''));
+            $openai_api_key = trim($_POST['openai_api_key'] ?? ($existing_settings['openai_api_key'] ?? ''));
+            $openai_model = trim($_POST['openai_model'] ?? ($existing_settings['openai_model'] ?? 'openai/gpt-4o-mini'));
+            $openai_endpoint = trim($_POST['openai_endpoint'] ?? ($existing_settings['openai_endpoint'] ?? 'https://models.github.ai/inference'));
+
+            // Merge updated settings
+            $settings = array_merge($existing_settings, [
                 'site_title' => trim($_POST['site_title'] ?? ''),
                 'site_description' => trim($_POST['site_description'] ?? ''),
                 'admin_email' => trim($_POST['admin_email'] ?? ''),
                 'posts_per_page' => (int)($_POST['posts_per_page'] ?? 10),
+                'business_info' => $business_info,
+                'openai_api_key' => $openai_api_key,
+                'openai_model' => $openai_model,
+                'openai_endpoint' => $openai_endpoint,
                 'updated' => date('c')
-            ];
+            ]);
 
             // Save settings to file
-            $settings_file = CONTENT_DIR . 'settings.json';
             if (file_put_contents($settings_file, json_encode($settings, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE))) {
                 $success_message = "Settings updated successfully!";
 
@@ -66,7 +87,11 @@ $settings = array_merge([
     'site_title' => SITE_TITLE,
     'site_description' => 'A simple flat-file blog',
     'admin_email' => 'admin@example.com',
-    'posts_per_page' => 10
+    'posts_per_page' => 10,
+    'business_info' => '',
+    'openai_api_key' => '',
+    'openai_model' => 'openai/gpt-4o-mini',
+    'openai_endpoint' => 'https://models.github.ai/inference'
 ], $current_settings);
 
 // Function to update config.php
@@ -170,7 +195,15 @@ function update_config_site_title($new_title)
                                         <div class="card mb-4">
                                             <div class="card-body">
                                                 <div class="mb-3">
-                                                    <label for="site_title" class="form-label">Site Title *</label>
+                                                    <label for="ai_provider" class="form-label">Provider</label>
+                                                    <select class="form-select" id="ai_provider" name="ai_provider">
+                                                        <option value="google" <?php echo ($settings['ai_provider'] ?? '') === 'google' ? 'selected' : ''; ?>>Google AI Studio (Gemini)</option>
+                                                        <option value="openai" <?php echo ($settings['ai_provider'] ?? '') === 'openai' ? 'selected' : ''; ?>>OpenAI via GitHub Models</option>
+                                                    </select>
+                                                    <div class="form-text">Choose your AI provider. Flash/mini models are lower cost.</div>
+                                                </div>
+                                    <div class="mb-3">
+                                        <label for="site_title" class="form-label">Site Title *</label>
                                                     <input type="text" class="form-control" id="site_title" name="site_title"
                                                         value="<?php echo htmlspecialchars($settings['site_title']); ?>" required>
                                                 </div>
@@ -193,6 +226,37 @@ function update_config_site_title($new_title)
                                                         value="<?php echo $settings['posts_per_page']; ?>" min="1" max="50">
                                                 </div>
 
+                                <!-- AI Settings (OpenAI only) -->
+                                <div class="card mb-3">
+                                    <div class="card-header">
+                                        <h5 class="mb-0"><i class="bi bi-robot"></i> AI Settings</h5>
+                                    </div>
+                                    <div class="card-body">
+                                    <div class="mb-3">
+                                            <label for="openai_api_key" class="form-label">GitHub Models Token</label>
+                                            <input type="password" class="form-control" id="openai_api_key" name="openai_api_key" placeholder="Paste GitHub token">
+                                            <div class="form-text">Stored server-side. Leave blank to keep current.</div>
+                                        </div>
+                                    <div class="mb-3">
+                                                            <label for="openai_model" class="form-label">OpenAI Model</label>
+                                                            <input type="text" class="form-control" id="openai_model" name="openai_model" value="<?php echo htmlspecialchars($settings['openai_model']); ?>">
+                                                            <div class="form-text">Examples: openai/gpt-4o-mini (low cost), openai/gpt-4o</div>
+                                                        </div>
+                                    <div class="mb-3">
+                                                            <label for="openai_endpoint" class="form-label">OpenAI Endpoint</label>
+                                                            <input type="text" class="form-control" id="openai_endpoint" name="openai_endpoint" value="<?php echo htmlspecialchars($settings['openai_endpoint']); ?>">
+                                                            <div class="form-text">Default: https://models.github.ai/inference</div>
+                                                        </div>
+
+                                                        <div class="mb-3">
+                                                            <label for="business_info" class="form-label">Business Information</label>
+                                                            <textarea class="form-control" id="business_info" name="business_info" rows="4"
+                                                                placeholder="Describe your business, audience, offerings, tone, location, etc."><?php echo htmlspecialchars($settings['business_info']); ?></textarea>
+                                                            <div class="form-text">Used to personalize AI-generated posts.</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
                                                 <div class="d-grid">
                                                     <button type="submit" class="btn btn-primary">
                                                         <i class="bi bi-check-circle"></i> Save Settings
@@ -203,6 +267,34 @@ function update_config_site_title($new_title)
                                     </div>
                                 </div>
                             </form>
+                            <script>
+                                (function() {
+                                    const provider = document.getElementById('ai_provider');
+                                    const googleEls = document.querySelectorAll('.google-only');
+                                    const openaiEls = document.querySelectorAll('.openai-only');
+
+                                    function toggle() {
+                                        const v = provider.value;
+                                        if (v === 'openai') {
+                                            googleEls.forEach(function(el) {
+                                                el.style.display = 'none';
+                                            });
+                                            openaiEls.forEach(function(el) {
+                                                el.style.display = 'block';
+                                            });
+                                        } else {
+                                            googleEls.forEach(function(el) {
+                                                el.style.display = 'block';
+                                            });
+                                            openaiEls.forEach(function(el) {
+                                                el.style.display = 'none';
+                                            });
+                                        }
+                                    }
+                                    provider.addEventListener('change', toggle);
+                                    toggle();
+                                })();
+                            </script>
                         </div>
                     </div>
                 </div>
