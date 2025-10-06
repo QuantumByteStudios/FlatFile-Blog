@@ -9,6 +9,7 @@ require_once '../functions.php';
 require_once __DIR__ . '/../libs/SecurityHardener.php';
 require_once __DIR__ . '/../libs/AdminLogger.php';
 require_once 'tools/backup.php';
+require_once __DIR__ . '/../libs/SelfUpdater.php';
 
 // Initialize security system
 SecurityHardener::init();
@@ -69,6 +70,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
                 $success_message = 'Cache cleaned successfully';
+                break;
+
+            case 'run_updater':
+                $settings = load_settings();
+                $repo = trim($settings['updater_repo'] ?? '');
+                $branch = trim($settings['updater_branch'] ?? 'main');
+                $token = trim($settings['updater_token'] ?? '');
+                if ($repo === '') {
+                    $error_message = 'Updater repository not configured in Settings.';
+                    break;
+                }
+                $res = SelfUpdater::updateFromGitHub($repo, $branch, $token);
+                if ($res['success']) {
+                    $success_message = $res['message'] ?? 'Updated successfully.';
+                } else {
+                    $error_message = $res['error'] ?? 'Update failed.';
+                }
+                break;
+
+            case 'run_url_updater':
+                $settings = load_settings();
+                $url = trim($settings['updater_url'] ?? '');
+                $checksum = trim($settings['updater_checksum'] ?? '');
+                if ($url === '') {
+                    $error_message = 'Update URL not configured in Settings.';
+                    break;
+                }
+                $res = SelfUpdater::updateFromURL($url, $checksum);
+                if ($res['success']) {
+                    $success_message = $res['message'] ?? 'Updated successfully.';
+                } else {
+                    $error_message = $res['error'] ?? 'Update failed.';
+                }
+                break;
+
+            case 'run_zip_updater':
+                if (!isset($_FILES['update_zip']) || $_FILES['update_zip']['error'] !== UPLOAD_ERR_OK) {
+                    $error_message = 'Please upload a ZIP file.';
+                    break;
+                }
+                $tmpPath = $_FILES['update_zip']['tmp_name'];
+                $res = SelfUpdater::updateFromZipFile($tmpPath);
+                if ($res['success']) {
+                    $success_message = $res['message'] ?? 'Updated successfully.';
+                } else {
+                    $error_message = $res['error'] ?? 'Update failed.';
+                }
                 break;
 
             default:
@@ -286,6 +334,52 @@ if (is_dir($backup_dir)) {
                                         <button type="submit" class="btn btn-dark btn-sm">
                                             <i class="bi bi-broom"></i> Clean Cache
                                         </button>
+                                    </form>
+
+                                    <!-- Run Self-Updater -->
+                                    <form method="POST" class="mb-3">
+                                        <input type="hidden" name="action" value="run_updater">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <i class="bi bi-cloud-arrow-down text-primary me-2"></i>
+                                            <strong>Run Self-Updater</strong>
+                                        </div>
+                                        <p class="text-muted small mb-2">Fetch and apply latest code from configured GitHub repo.</p>
+                                        <button type="submit" class="btn btn-dark btn-sm">
+                                            <i class="bi bi-cloud-arrow-down"></i> Update Now
+                                        </button>
+                                    </form>
+
+                                    <!-- Run URL Updater -->
+                                    <form method="POST" class="mb-3">
+                                        <input type="hidden" name="action" value="run_url_updater">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <i class="bi bi-link-45deg text-primary me-2"></i>
+                                            <strong>Update from Public URL</strong>
+                                        </div>
+                                        <p class="text-muted small mb-2">Uses the Update URL and optional checksum from Settings.</p>
+                                        <button type="submit" class="btn btn-dark btn-sm">
+                                            <i class="bi bi-link-45deg"></i> Update From URL
+                                        </button>
+                                    </form>
+
+                                    <!-- Upload Update ZIP -->
+                                    <form method="POST" enctype="multipart/form-data" class="mb-3">
+                                        <input type="hidden" name="action" value="run_zip_updater">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <i class="bi bi-upload text-primary me-2"></i>
+                                            <strong>Upload Update ZIP</strong>
+                                        </div>
+                                        <div class="row g-2 align-items-center mb-2">
+                                            <div class="col-9">
+                                                <input type="file" name="update_zip" class="form-control form-control-sm" accept="application/zip" required>
+                                            </div>
+                                            <div class="col-3">
+                                                <button type="submit" class="btn btn-dark btn-sm w-100">
+                                                    <i class="bi bi-upload"></i> Upload
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <p class="text-muted small mb-0">Safe: skips content/uploads/logs/config.php and settings.json.</p>
                                     </form>
                                 </div>
                             </div>
