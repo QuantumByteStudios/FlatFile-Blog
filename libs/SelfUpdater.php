@@ -91,7 +91,12 @@ class SelfUpdater
             }
         }
 
-        $zipUrl = 'https://api.github.com/repos/' . rawurlencode($repo) . '/zipball/' . rawurlencode($branch);
+        // Build API URL correctly: encode owner and repo separately, not the slash
+        if (strpos($repo, '/') === false) {
+            return ['success' => false, 'error' => 'Invalid repo format. Use owner/repo'];
+        }
+        list($owner, $name) = explode('/', $repo, 2);
+        $zipUrl = 'https://api.github.com/repos/' . rawurlencode($owner) . '/' . rawurlencode($name) . '/zipball/' . rawurlencode($branch);
         $tmpDir = CONTENT_DIR . 'tmp_updater/';
         $zipFile = $tmpDir . 'update.zip';
         $extractDir = $tmpDir . 'extract/';
