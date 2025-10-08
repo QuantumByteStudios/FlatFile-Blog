@@ -22,6 +22,9 @@ try {
 	die('System error. Please try again later.');
 }
 
+// Load settings for footer/contact info
+$settings = load_settings();
+
 // Get post slug from URL
 $slug = isset($_GET['slug']) ? trim($_GET['slug']) : '';
 
@@ -316,7 +319,7 @@ $canonical_url = BASE_URL . urlencode($post['slug']);
 					</span>
 					<br>
 					<span>
-						<a href="mailto:<?php echo htmlspecialchars($settings['admin_email']); ?>" style="border-bottom: 1px solid #000;" class="text-dark text-decoration-none"><?php echo htmlspecialchars($settings['admin_email']); ?></a>
+						<a href="mailto:<?php echo htmlspecialchars($settings['admin_email'] ?? (defined('ADMIN_EMAIL') ? ADMIN_EMAIL : '')); ?>" style="border-bottom: 1px solid #000;" class="text-dark text-decoration-none"><?php echo htmlspecialchars($settings['admin_email'] ?? (defined('ADMIN_EMAIL') ? ADMIN_EMAIL : '')); ?></a>
 					</span>
 				</div>
 			</div>
