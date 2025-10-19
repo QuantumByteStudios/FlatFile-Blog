@@ -350,6 +350,31 @@ function update_config_site_title($new_title)
                                                         <i class="bi bi-cloud-arrow-down"></i> Update Now
                                                     </button>
                                                 </div>
+                                                <script>
+                                                    // Log updater debug info from URL params if present
+                                                    (function() {
+                                                        try {
+                                                            var params = new URLSearchParams(window.location.search);
+                                                            var ulogs = params.get('updater_logs');
+                                                            var umsg = params.get('updater_msg');
+                                                            var umode = params.get('updater_mode');
+                                                            if (umsg) console.log('[Updater]', decodeURIComponent(umsg));
+                                                            if (umode) console.log('[Updater] mode:', umode);
+                                                            if (ulogs) {
+                                                                try {
+                                                                    var logs = JSON.parse(decodeURIComponent(ulogs));
+                                                                    console.group('[Updater] logs');
+                                                                    logs.forEach(function(entry, idx) {
+                                                                        console.log('#' + (idx + 1), entry);
+                                                                    });
+                                                                    console.groupEnd();
+                                                                } catch (e) {
+                                                                    console.warn('[Updater] Failed to parse logs:', e);
+                                                                }
+                                                            }
+                                                        } catch (e) {}
+                                                    })();
+                                                </script>
                                             </div>
                                         </div>
 
