@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Security Hardener
  * Advanced security features and hardening
@@ -11,7 +12,7 @@ class SecurityHardener
     private static $lockout_duration = 900; // 15 minutes
     private static $rate_limit_window = 60; // 1 minute
     private static $rate_limit_requests = 30; // 30 requests per minute
-    
+
     /**
      * Initialize security system
      */
@@ -29,14 +30,14 @@ class SecurityHardener
             ini_set('session.use_strict_mode', 1);
             ini_set('session.cookie_samesite', 'Strict');
         }
-        
+
         // Disable dangerous functions
         self::disableDangerousFunctions();
-        
+
         // Set security headers
         self::setSecurityHeaders();
     }
-    
+
     /**
      * Set security headers
      */
@@ -44,35 +45,35 @@ class SecurityHardener
     {
         // Prevent clickjacking
         header('X-Frame-Options: DENY');
-        
+
         // Prevent MIME type sniffing
         header('X-Content-Type-Options: nosniff');
-        
+
         // Enable XSS protection
         header('X-XSS-Protection: 1; mode=block');
-        
+
         // Strict Transport Security (HTTPS only)
         if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
             header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
         }
-        
+
         // Content Security Policy
         $csp = "default-src 'self'; " .
-               "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " .
-               "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " .
-               "img-src 'self' data: https:; " .
-               "font-src 'self' https://cdn.jsdelivr.net; " .
-               "connect-src 'self'; " .
-               "frame-ancestors 'none';";
+            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " .
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " .
+            "img-src 'self' data: https:; " .
+            "font-src 'self' https://cdn.jsdelivr.net; " .
+            "connect-src 'self' https://cdn.jsdelivr.net data: blob:; " .
+            "frame-ancestors 'none';";
         header("Content-Security-Policy: {$csp}");
-        
+
         // Referrer Policy
         header('Referrer-Policy: strict-origin-when-cross-origin');
-        
+
         // Permissions Policy
         header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
     }
-    
+
     /**
      * Check for brute force attempts
      */
@@ -80,10 +81,10 @@ class SecurityHardener
     {
         $attempts = self::getFailedAttempts();
         $key = $ip . ($username ? '_' . $username : '');
-        
+
         if (isset($attempts[$key])) {
             $attempt_data = $attempts[$key];
-            
+
             // Check if still in lockout period
             if (time() - $attempt_data['last_attempt'] < self::$lockout_duration) {
                 $remaining = self::$lockout_duration - (time() - $attempt_data['last_attempt']);
@@ -93,17 +94,17 @@ class SecurityHardener
                     'remaining' => $remaining
                 ];
             }
-            
+
             // Reset if lockout period has passed
             if ($attempt_data['count'] >= self::$max_attempts) {
                 unset($attempts[$key]);
                 self::saveFailedAttempts($attempts);
             }
         }
-        
+
         return ['blocked' => false];
     }
-    
+
     /**
      * Record failed attempt
      */
@@ -111,17 +112,17 @@ class SecurityHardener
     {
         $attempts = self::getFailedAttempts();
         $key = $ip . ($username ? '_' . $username : '');
-        
+
         if (!isset($attempts[$key])) {
             $attempts[$key] = ['count' => 0, 'last_attempt' => 0];
         }
-        
+
         $attempts[$key]['count']++;
         $attempts[$key]['last_attempt'] = time();
-        
+
         self::saveFailedAttempts($attempts);
     }
-    
+
     /**
      * Clear failed attempts (on successful login)
      */
@@ -129,13 +130,13 @@ class SecurityHardener
     {
         $attempts = self::getFailedAttempts();
         $key = $ip . ($username ? '_' . $username : '');
-        
+
         if (isset($attempts[$key])) {
             unset($attempts[$key]);
             self::saveFailedAttempts($attempts);
         }
     }
-    
+
     /**
      * Rate limiting
      */
@@ -144,12 +145,12 @@ class SecurityHardener
         $rate_data = self::getRateLimitData();
         $current_time = time();
         $window_start = $current_time - self::$rate_limit_window;
-        
+
         // Clean old entries
-        $rate_data[$ip] = array_filter($rate_data[$ip] ?? [], function($timestamp) use ($window_start) {
+        $rate_data[$ip] = array_filter($rate_data[$ip] ?? [], function ($timestamp) use ($window_start) {
             return $timestamp > $window_start;
         });
-        
+
         // Check if over limit
         if (count($rate_data[$ip] ?? []) >= self::$rate_limit_requests) {
             return [
@@ -158,14 +159,14 @@ class SecurityHardener
                 'retry_after' => self::$rate_limit_window
             ];
         }
-        
+
         // Record this request
         $rate_data[$ip][] = $current_time;
         self::saveRateLimitData($rate_data);
-        
+
         return ['blocked' => false];
     }
-    
+
     /**
      * Input sanitization
      */
@@ -185,7 +186,7 @@ class SecurityHardener
                 return htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8');
         }
     }
-    
+
     /**
      * Validate file upload
      */
@@ -195,62 +196,62 @@ class SecurityHardener
         if ($file['error'] !== UPLOAD_ERR_OK) {
             return ['valid' => false, 'error' => 'Upload error: ' . $file['error']];
         }
-        
+
         // Check file size (5MB max)
         if ($file['size'] > 5 * 1024 * 1024) {
             return ['valid' => false, 'error' => 'File too large. Maximum size: 5MB'];
         }
-        
+
         // Check MIME type
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
         $mime_type = finfo_file($finfo, $file['tmp_name']);
         finfo_close($finfo);
-        
+
         if (!in_array($mime_type, $allowed_types)) {
             return ['valid' => false, 'error' => 'Invalid file type. Allowed: ' . implode(', ', $allowed_types)];
         }
-        
+
         // Check file extension
         $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
         $allowed_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-        
+
         if (!in_array($extension, $allowed_extensions)) {
             return ['valid' => false, 'error' => 'Invalid file extension'];
         }
-        
+
         // Check for malicious content
         if (self::containsMaliciousContent($file['tmp_name'])) {
             return ['valid' => false, 'error' => 'File contains suspicious content'];
         }
-        
+
         return ['valid' => true];
     }
-    
+
     /**
      * Check for malicious content
      */
     private static function containsMaliciousContent($file_path)
     {
         $content = file_get_contents($file_path, false, null, 0, 1024);
-        
+
         // Check for PHP tags
         if (strpos($content, '<?php') !== false || strpos($content, '<?=') !== false) {
             return true;
         }
-        
+
         // Check for script tags
         if (stripos($content, '<script') !== false) {
             return true;
         }
-        
+
         // Check for executable content
         if (strpos($content, 'eval(') !== false || strpos($content, 'exec(') !== false) {
             return true;
         }
-        
+
         return false;
     }
-    
+
     /**
      * Generate secure random token
      */
@@ -258,7 +259,7 @@ class SecurityHardener
     {
         return bin2hex(random_bytes($length));
     }
-    
+
     /**
      * Hash password with salt
      */
@@ -270,7 +271,7 @@ class SecurityHardener
             'threads' => 3          // 3 threads
         ]);
     }
-    
+
     /**
      * Verify password
      */
@@ -278,19 +279,30 @@ class SecurityHardener
     {
         return password_verify($password, $hash);
     }
-    
+
     /**
      * Disable dangerous functions
      */
     private static function disableDangerousFunctions()
     {
         $dangerous_functions = [
-            'exec', 'system', 'shell_exec', 'passthru',
-            'eval', 'assert', 'create_function',
-            'file_get_contents', 'file_put_contents', 'fopen', 'fwrite',
-            'include', 'include_once', 'require', 'require_once'
+            'exec',
+            'system',
+            'shell_exec',
+            'passthru',
+            'eval',
+            'assert',
+            'create_function',
+            'file_get_contents',
+            'file_put_contents',
+            'fopen',
+            'fwrite',
+            'include',
+            'include_once',
+            'require',
+            'require_once'
         ];
-        
+
         foreach ($dangerous_functions as $func) {
             if (function_exists($func)) {
                 // Log attempt to use dangerous function
@@ -298,7 +310,7 @@ class SecurityHardener
             }
         }
     }
-    
+
     /**
      * Get failed attempts
      */
@@ -307,11 +319,11 @@ class SecurityHardener
         if (!file_exists(self::$failed_attempts_file)) {
             return [];
         }
-        
+
         $data = file_get_contents(self::$failed_attempts_file);
         return json_decode($data, true) ?: [];
     }
-    
+
     /**
      * Save failed attempts
      */
@@ -321,25 +333,25 @@ class SecurityHardener
         if (!file_exists($dir)) {
             mkdir($dir, 0755, true);
         }
-        
+
         file_put_contents(self::$failed_attempts_file, json_encode($attempts));
     }
-    
+
     /**
      * Get rate limit data
      */
     private static function getRateLimitData()
     {
         $file = __DIR__ . '/../logs/rate_limit.json';
-        
+
         if (!file_exists($file)) {
             return [];
         }
-        
+
         $data = file_get_contents($file);
         return json_decode($data, true) ?: [];
     }
-    
+
     /**
      * Save rate limit data
      */
@@ -347,12 +359,11 @@ class SecurityHardener
     {
         $file = __DIR__ . '/../logs/rate_limit.json';
         $dir = dirname($file);
-        
+
         if (!file_exists($dir)) {
             mkdir($dir, 0755, true);
         }
-        
+
         file_put_contents($file, json_encode($data));
     }
 }
-?>

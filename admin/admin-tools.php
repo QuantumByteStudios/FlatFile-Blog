@@ -86,12 +86,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     $res = SelfUpdater::updateFromGitHub($repo, '', $token);
                 }
-                if ($res['success']) {
-                    $success_message = $res['message'] ?? 'Updated successfully.';
-                } else {
-                    $error_message = $res['error'] ?? 'Update failed.';
+                // Prepare console logging via URL params
+                $logsParam = '';
+                if (!empty($res['logs'])) {
+                    $logsParam = '&updater_logs=' . rawurlencode(json_encode($res['logs']));
                 }
-                break;
+                $modeParam = !empty($res['mode']) ? ('&updater_mode=' . rawurlencode($res['mode'])) : '';
+                $msgParam = '&updater_msg=' . rawurlencode($res['message'] ?? ($res['error'] ?? ''));
+                $target = BASE_URL . 'admin/admin-tools?';
+                if ($res['success']) {
+                    $target .= 'success=' . rawurlencode($res['message'] ?? 'Updated successfully.') . $modeParam . $logsParam . $msgParam;
+                } else {
+                    $target .= 'error=' . rawurlencode($res['error'] ?? 'Update failed.') . $modeParam . $logsParam . $msgParam;
+                }
+                header('Location: ' . $target);
+                exit;
 
             default:
                 $error_message = 'Invalid action';

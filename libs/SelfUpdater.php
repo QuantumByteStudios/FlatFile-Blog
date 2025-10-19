@@ -50,13 +50,19 @@ class SelfUpdater
         // Try git-based update first if possible
         $projectRoot = dirname(__DIR__);
         $git = self::findGitBinary();
+        $gitAttemptLogs = [];
         if ($git) {
             $repoUrl = self::normalizeRepoUrl($owner, $name);
             $gitResult = self::updateViaGit($git, $projectRoot, $repoUrl, $resolvedBranch);
+            if (!empty($gitResult['logs'])) {
+                $gitAttemptLogs = $gitResult['logs'];
+            }
             if ($gitResult['success']) {
+                // Ensure mode is marked
+                $gitResult['mode'] = 'git';
                 return $gitResult; // Updated via git
             }
-            // If git failed, fall back to ZIP method below
+            // If git failed, fall back to ZIP method below and include git logs
         }
 
         $tmpDir = CONTENT_DIR . 'tmp_updater/';
@@ -72,12 +78,16 @@ class SelfUpdater
         $downloadUrl = 'https://codeload.github.com/' . rawurlencode($owner) . '/' . rawurlencode($name) . '/zip/refs/heads/' . rawurlencode($resolvedBranch);
         $dl = self::download($downloadUrl, $zipFile, '');
         if (!$dl['success']) {
-            return $dl;
+            return ['success' => false, 'error' => $dl['error'] ?? 'Download failed', 'mode' => 'zip', 'logs' => array_merge($gitAttemptLogs, [
+                ['step' => 'download', 'url' => $downloadUrl, 'error' => $dl['error'] ?? 'download error']
+            ])];
         }
 
         $ok = self::unzip($zipFile, $extractDir);
         if (!$ok['success']) {
-            return $ok;
+            return ['success' => false, 'error' => $ok['error'] ?? 'Unzip failed', 'mode' => 'zip', 'logs' => array_merge($gitAttemptLogs, [
+                ['step' => 'unzip', 'zip' => $zipFile, 'error' => $ok['error'] ?? 'unzip error']
+            ])];
         }
 
         // Find source directory
@@ -94,11 +104,18 @@ class SelfUpdater
         ];
         $copy = self::copyRecursive($sourceDir, dirname(__DIR__), $excludes);
         if (!$copy['success']) {
-            return $copy;
+            return ['success' => false, 'error' => $copy['error'] ?? 'Copy failed', 'mode' => 'zip', 'logs' => array_merge($gitAttemptLogs, [
+                ['step' => 'copy', 'from' => $sourceDir, 'to' => dirname(__DIR__), 'error' => $copy['error'] ?? 'copy error']
+            ])];
         }
 
         self::rrmdir($tmpDir);
-        return ['success' => true, 'message' => 'Updated from ' . $owner . '/' . $name . '@' . $resolvedBranch];
+        return ['success' => true, 'message' => 'Updated from ' . $owner . '/' . $name . '@' . $resolvedBranch, 'mode' => 'zip', 'logs' => array_merge($gitAttemptLogs, [
+            ['step' => 'download', 'url' => $downloadUrl, 'ok' => true],
+            ['step' => 'unzip', 'zip' => $zipFile, 'ok' => true],
+            ['step' => 'copy', 'from' => $sourceDir, 'to' => dirname(__DIR__), 'ok' => true],
+            ['step' => 'cleanup', 'dir' => $tmpDir, 'ok' => true]
+        ])];
     }
     public static function updateFromURL($url, $checksum = '')
     {
@@ -350,7 +367,7 @@ class SelfUpdater
             // Fallback to shell_exec if proc_open disabled
             $output = @shell_exec($command . ' 2>&1');
             $code = ($output === null) ? 1 : 0;
-            return ['code' => $code, 'stdout' => (string)$output, 'stderr' => ''];
+            return ['command' => $command, 'code' => $code, 'stdout' => (string)$output, 'stderr' => ''];
         }
         fclose($pipes[0]);
         $stdout = stream_get_contents($pipes[1]);
@@ -358,7 +375,7 @@ class SelfUpdater
         $stderr = stream_get_contents($pipes[2]);
         fclose($pipes[2]);
         $status = proc_close($process);
-        return ['code' => $status, 'stdout' => (string)$stdout, 'stderr' => (string)$stderr];
+        return ['command' => $command, 'code' => $status, 'stdout' => (string)$stdout, 'stderr' => (string)$stderr];
     }
 
     private static function normalizeRepoUrl($owner, $name)
@@ -369,37 +386,45 @@ class SelfUpdater
 
     private static function updateViaGit($git, $root, $repoUrl, $branch)
     {
+        $logs = [];
         $gitDir = rtrim($root, '\\/') . DIRECTORY_SEPARATOR . '.git';
         if (is_dir($gitDir)) {
             // Ensure remote origin exists and points to repoUrl
             $remoteCheck = self::runProcess($git . ' remote get-url origin', $root);
+            $logs[] = $remoteCheck;
             if ($remoteCheck['code'] !== 0) {
                 $add = self::runProcess($git . ' remote add origin ' . escapeshellarg($repoUrl), $root);
+                $logs[] = $add;
                 if ($add['code'] !== 0) {
-                    return ['success' => false, 'error' => 'git remote add failed: ' . $add['stderr']];
+                    return ['success' => false, 'error' => 'git remote add failed: ' . $add['stderr'], 'logs' => $logs];
                 }
             }
             // Fetch and hard reset to origin/branch (leave untracked files alone)
             $fetch = self::runProcess($git . ' fetch --prune origin', $root);
+            $logs[] = $fetch;
             if ($fetch['code'] !== 0) {
-                return ['success' => false, 'error' => 'git fetch failed: ' . $fetch['stderr']];
+                return ['success' => false, 'error' => 'git fetch failed: ' . $fetch['stderr'], 'logs' => $logs];
             }
             // Ensure branch exists locally, then reset
             $checkout = self::runProcess($git . ' checkout -B ' . escapeshellarg($branch) . ' --track origin/' . escapeshellarg($branch), $root);
+            $logs[] = $checkout;
             if ($checkout['code'] !== 0) {
                 // Try without --track if branch already exists
                 $checkout = self::runProcess($git . ' checkout -B ' . escapeshellarg($branch), $root);
+                $logs[] = $checkout;
                 if ($checkout['code'] !== 0) {
-                    return ['success' => false, 'error' => 'git checkout failed: ' . $checkout['stderr']];
+                    return ['success' => false, 'error' => 'git checkout failed: ' . $checkout['stderr'], 'logs' => $logs];
                 }
             }
             $reset = self::runProcess($git . ' reset --hard origin/' . escapeshellarg($branch), $root);
+            $logs[] = $reset;
             if ($reset['code'] !== 0) {
-                return ['success' => false, 'error' => 'git reset failed: ' . $reset['stderr']];
+                return ['success' => false, 'error' => 'git reset failed: ' . $reset['stderr'], 'logs' => $logs];
             }
             // Optional: submodules
-            self::runProcess($git . ' submodule update --init --recursive', $root);
-            return ['success' => true, 'message' => 'Updated via git to branch ' . $branch];
+            $sub = self::runProcess($git . ' submodule update --init --recursive', $root);
+            $logs[] = $sub;
+            return ['success' => true, 'message' => 'Updated via git to branch ' . $branch, 'logs' => $logs];
         }
 
         // Not a git repo: try shallow clone to temp and copy over (non-destructive)
@@ -409,18 +434,21 @@ class SelfUpdater
         @mkdir($tmpDir, 0755, true);
         $cloneCmd = $git . ' clone --depth 1 --branch ' . escapeshellarg($branch) . ' ' . escapeshellarg($repoUrl) . ' ' . escapeshellarg($cloneDir);
         $clone = self::runProcess($cloneCmd, $tmpDir);
+        $logs[] = $clone;
         if ($clone['code'] !== 0) {
             self::rrmdir($tmpDir);
-            return ['success' => false, 'error' => 'git clone failed: ' . $clone['stderr']];
+            return ['success' => false, 'error' => 'git clone failed: ' . $clone['stderr'], 'logs' => $logs];
         }
         // Copy from clone into project root, excluding user data
         $excludes = ['/content/', '/uploads/', '/logs/', '/config.php', '/content/settings.json'];
         $copy = self::copyRecursive($cloneDir, $root, $excludes);
         self::rrmdir($tmpDir);
         if (!$copy['success']) {
-            return $copy;
+            $logs[] = ['command' => 'copy', 'code' => $copy['success'] ? 0 : 1, 'stdout' => '', 'stderr' => $copy['error'] ?? 'copy error'];
+            return ['success' => false, 'error' => ($copy['error'] ?? 'Copy failed'), 'logs' => $logs];
         }
-        return ['success' => true, 'message' => 'Updated via git clone to branch ' . $branch];
+        $logs[] = ['command' => 'copy', 'code' => 0, 'stdout' => 'copied to ' . $root, 'stderr' => ''];
+        return ['success' => true, 'message' => 'Updated via git clone to branch ' . $branch, 'logs' => $logs];
     }
 
     private static function unzip($zipFile, $extractTo)
