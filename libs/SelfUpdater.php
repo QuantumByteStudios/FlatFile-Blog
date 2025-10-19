@@ -109,13 +109,20 @@ class SelfUpdater
                 ['step' => 'copy', 'from' => $sourceDir, 'to' => dirname(__DIR__), 'error' => $copy['error'] ?? 'copy error']
             ])];
         }
+        // Ensure install.php is not present post-update
+        $removedInstall = false;
+        $installPath = dirname(__DIR__) . '/install.php';
+        if (file_exists($installPath)) {
+            $removedInstall = @unlink($installPath);
+        }
 
         self::rrmdir($tmpDir);
         return ['success' => true, 'message' => 'Updated from ' . $owner . '/' . $name . '@' . $resolvedBranch, 'mode' => 'zip', 'logs' => array_merge($gitAttemptLogs, [
             ['step' => 'download', 'url' => $downloadUrl, 'ok' => true],
             ['step' => 'unzip', 'zip' => $zipFile, 'ok' => true],
             ['step' => 'copy', 'from' => $sourceDir, 'to' => dirname(__DIR__), 'ok' => true],
-            ['step' => 'cleanup', 'dir' => $tmpDir, 'ok' => true]
+            ['step' => 'cleanup', 'dir' => $tmpDir, 'ok' => true],
+            ['step' => 'post', 'action' => 'remove install.php', 'ok' => $removedInstall]
         ])];
     }
     public static function updateFromURL($url, $checksum = '')
@@ -171,6 +178,11 @@ class SelfUpdater
         if (!$copy['success']) {
             return $copy;
         }
+        // Ensure install.php is not present post-update
+        $installPath = dirname(__DIR__) . '/install.php';
+        if (file_exists($installPath)) {
+            @unlink($installPath);
+        }
         self::rrmdir($tmpDir);
         return ['success' => true, 'message' => 'Updated from URL'];
     }
@@ -192,6 +204,11 @@ class SelfUpdater
         $excludes = ['/content/', '/uploads/', '/logs/', '/config.php', '/content/settings.json', '/install.php'];
         $copy = self::copyRecursive($sourceDir, dirname(__DIR__), $excludes);
         if (!$copy['success']) return $copy;
+        // Ensure install.php is not present post-update
+        $installPath = dirname(__DIR__) . '/install.php';
+        if (file_exists($installPath)) {
+            @unlink($installPath);
+        }
         self::rrmdir($tmpDir);
         return ['success' => true, 'message' => 'Updated from uploaded ZIP'];
     }
@@ -431,6 +448,12 @@ class SelfUpdater
             if ($reset['code'] !== 0) {
                 return ['success' => false, 'error' => 'git reset failed: ' . $reset['stderr'], 'logs' => $logs];
             }
+            // Remove install.php if present after reset
+            $installPath = $root . DIRECTORY_SEPARATOR . 'install.php';
+            if (file_exists($installPath)) {
+                $rmOk = @unlink($installPath);
+                $logs[] = ['command' => 'remove install.php', 'code' => $rmOk ? 0 : 1, 'stdout' => $rmOk ? 'removed' : '', 'stderr' => $rmOk ? '' : 'failed'];
+            }
             // Optional: submodules
             $sub = self::runProcess($git . ' submodule update --init --recursive', $root);
             $logs[] = $sub;
@@ -456,6 +479,12 @@ class SelfUpdater
         if (!$copy['success']) {
             $logs[] = ['command' => 'copy', 'code' => $copy['success'] ? 0 : 1, 'stdout' => '', 'stderr' => $copy['error'] ?? 'copy error'];
             return ['success' => false, 'error' => ($copy['error'] ?? 'Copy failed'), 'logs' => $logs];
+        }
+        // Remove install.php if present after copy
+        $installPath = $root . DIRECTORY_SEPARATOR . 'install.php';
+        if (file_exists($installPath)) {
+            $rmOk = @unlink($installPath);
+            $logs[] = ['command' => 'remove install.php', 'code' => $rmOk ? 0 : 1, 'stdout' => $rmOk ? 'removed' : '', 'stderr' => $rmOk ? '' : 'failed'];
         }
         $logs[] = ['command' => 'copy', 'code' => 0, 'stdout' => 'copied to ' . $root, 'stderr' => ''];
         return ['success' => true, 'message' => 'Updated via git clone to branch ' . $branch, 'logs' => $logs];
