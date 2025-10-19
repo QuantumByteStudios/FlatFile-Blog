@@ -247,7 +247,7 @@ function update_config_site_title($new_title)
                         <div class="col-12">
                             <div class="d-flex justify-content-between align-items-center mb-4">
                                 <h1 class="h3 mb-0">
-                                    <i class="bi bi-gear"></i> Settings
+                                    Settings
                                 </h1>
                             </div>
 
@@ -308,7 +308,9 @@ function update_config_site_title($new_title)
                                         <!-- AI Settings (OpenAI only) -->
                                         <div class="card mb-4">
                                             <div class="card-header">
-                                                <h5 class="mb-0"><i class="bi bi-robot"></i> AI Settings</h5>
+                                                <h5 class="mb-0">
+                                                    AI Settings
+                                                </h5>
                                             </div>
                                             <div class="card-body">
                                                 <div class="mb-3">
@@ -337,7 +339,9 @@ function update_config_site_title($new_title)
                                         <!-- Self-Updater -->
                                         <div class="card mb-4">
                                             <div class="card-header">
-                                                <h5 class="mb-0"><i class="bi bi-cloud-arrow-down"></i> Self-Updater</h5>
+                                                <h5 class="mb-0">
+                                                    Self-Updater
+                                                </h5>
                                             </div>
                                             <div class="card-body">
                                                 <div class="row g-3 align-items-end">
