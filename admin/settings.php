@@ -127,10 +127,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 } else {
                     $res = SelfUpdater::updateFromGitHub($repo, $branch, $token);
                 }
+                // Ensure install.php is removed post-update regardless of path
+                $extraLogs = [];
+                $installPath = dirname(__DIR__) . '/install.php';
+                if (file_exists($installPath)) {
+                    $rmOk = @unlink($installPath);
+                    $extraLogs[] = ['step' => 'post', 'action' => 'remove install.php (controller)', 'ok' => $rmOk];
+                }
+
                 // Redirect with updater debug info in query so console script can print it
                 $logsParam = '';
-                if (!empty($res['logs'])) {
-                    $logsParam = '&updater_logs=' . rawurlencode(json_encode($res['logs']));
+                if (!empty($res['logs']) || !empty($extraLogs)) {
+                    $allLogs = !empty($res['logs']) ? array_merge($res['logs'], $extraLogs) : $extraLogs;
+                    $logsParam = '&updater_logs=' . rawurlencode(json_encode($allLogs));
                 }
                 $modeParam = !empty($res['mode']) ? ('&updater_mode=' . rawurlencode($res['mode'])) : '';
                 $msgParam = '&updater_msg=' . rawurlencode($res['message'] ?? ($res['error'] ?? ''));
