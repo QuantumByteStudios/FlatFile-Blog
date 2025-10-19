@@ -338,18 +338,17 @@ class SelfUpdater
 
     private static function findGitBinary()
     {
-        // Basic detection: assume 'git' is on PATH
-        $cmd = '\\' === DIRECTORY_SEPARATOR ? 'git --version' : 'git --version';
-        $out = @shell_exec($cmd . ' 2>&1');
-        if (is_string($out) && stripos($out, 'git version') !== false) {
-            return 'git';
-        }
-        // Fallback: try common Windows install path
+        // Avoid shell_exec on locked-down hosts; try proc_open via runProcess
+        $candidates = ['git'];
         $winGit = 'C:\\Program Files\\Git\\bin\\git.exe';
-        if (is_file($winGit)) {
-            $out = @shell_exec('"' . $winGit . '" --version 2>&1');
-            if (is_string($out) && stripos($out, 'git version') !== false) {
-                return '"' . $winGit . '"';
+        if (stripos(PHP_OS, 'WIN') === 0 && is_file($winGit)) {
+            $candidates[] = '"' . $winGit . '"';
+        }
+        $cwd = dirname(__DIR__);
+        foreach ($candidates as $bin) {
+            $res = self::runProcess($bin . ' --version', $cwd);
+            if (is_array($res) && ($res['code'] === 0) && (stripos(($res['stdout'] ?? '') . ($res['stderr'] ?? ''), 'git version') !== false)) {
+                return $bin;
             }
         }
         return null;
@@ -357,25 +356,34 @@ class SelfUpdater
 
     private static function runProcess($command, $cwd)
     {
-        $descriptorspec = [
-            0 => ['pipe', 'r'],
-            1 => ['pipe', 'w'],
-            2 => ['pipe', 'w']
-        ];
-        $process = @proc_open($command, $descriptorspec, $pipes, $cwd, null);
-        if (!is_resource($process)) {
-            // Fallback to shell_exec if proc_open disabled
+        $disabled = array_map('trim', explode(',', (string)ini_get('disable_functions')));
+        $procOpenAllowed = function_exists('proc_open') && !in_array('proc_open', $disabled, true);
+        if ($procOpenAllowed) {
+            $descriptorspec = [
+                0 => ['pipe', 'r'],
+                1 => ['pipe', 'w'],
+                2 => ['pipe', 'w']
+            ];
+            $process = @proc_open($command, $descriptorspec, $pipes, $cwd, null);
+            if (is_resource($process)) {
+                fclose($pipes[0]);
+                $stdout = stream_get_contents($pipes[1]);
+                fclose($pipes[1]);
+                $stderr = stream_get_contents($pipes[2]);
+                fclose($pipes[2]);
+                $status = proc_close($process);
+                return ['command' => $command, 'code' => $status, 'stdout' => (string)$stdout, 'stderr' => (string)$stderr];
+            }
+        }
+        // Fallback to shell_exec if available
+        $shellAllowed = function_exists('shell_exec') && !in_array('shell_exec', $disabled, true);
+        if ($shellAllowed) {
             $output = @shell_exec($command . ' 2>&1');
             $code = ($output === null) ? 1 : 0;
             return ['command' => $command, 'code' => $code, 'stdout' => (string)$output, 'stderr' => ''];
         }
-        fclose($pipes[0]);
-        $stdout = stream_get_contents($pipes[1]);
-        fclose($pipes[1]);
-        $stderr = stream_get_contents($pipes[2]);
-        fclose($pipes[2]);
-        $status = proc_close($process);
-        return ['command' => $command, 'code' => $status, 'stdout' => (string)$stdout, 'stderr' => (string)$stderr];
+        // No execution methods allowed
+        return ['command' => $command, 'code' => 127, 'stdout' => '', 'stderr' => 'Execution disabled by server configuration'];
     }
 
     private static function normalizeRepoUrl($owner, $name)
