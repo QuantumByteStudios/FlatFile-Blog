@@ -127,11 +127,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 } else {
                     $res = SelfUpdater::updateFromGitHub($repo, $branch, $token);
                 }
-                if (!empty($res['success'])) {
-                    $success_message = $res['message'] ?? 'Updated successfully.';
-                } else {
-                    $error_message = $res['error'] ?? 'Update failed.';
+                // Redirect with updater debug info in query so console script can print it
+                $logsParam = '';
+                if (!empty($res['logs'])) {
+                    $logsParam = '&updater_logs=' . rawurlencode(json_encode($res['logs']));
                 }
+                $modeParam = !empty($res['mode']) ? ('&updater_mode=' . rawurlencode($res['mode'])) : '';
+                $msgParam = '&updater_msg=' . rawurlencode($res['message'] ?? ($res['error'] ?? ''));
+                $target = BASE_URL . 'admin/settings?';
+                if (!empty($res['success'])) {
+                    $target .= 'success=' . rawurlencode($res['message'] ?? 'Updated successfully.') . $modeParam . $logsParam . $msgParam;
+                } else {
+                    $target .= 'error=' . rawurlencode($res['error'] ?? 'Update failed.') . $modeParam . $logsParam . $msgParam;
+                }
+                header('Location: ' . $target);
+                exit;
             }
         }
     }
