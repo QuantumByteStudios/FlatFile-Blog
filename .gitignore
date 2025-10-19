@@ -12,6 +12,8 @@
 # Generated files
 /content/index.json
 /content/search_index.json
+/sitemap.xml
+/rss.xml
 
 # Backup files
 /backups/*
