@@ -75,43 +75,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'run_updater':
                 $settings = load_settings();
                 $repo = trim($settings['updater_repo'] ?? '');
-                $branch = trim($settings['updater_branch'] ?? 'main');
                 $token = trim($settings['updater_token'] ?? '');
                 if ($repo === '') {
                     $error_message = 'Updater repository not configured in Settings.';
                     break;
                 }
-                $res = SelfUpdater::updateFromGitHub($repo, $branch, $token);
-                if ($res['success']) {
-                    $success_message = $res['message'] ?? 'Updated successfully.';
-                } else {
-                    $error_message = $res['error'] ?? 'Update failed.';
-                }
-                break;
-
-            case 'run_url_updater':
-                $settings = load_settings();
-                $url = trim($settings['updater_url'] ?? '');
-                $checksum = trim($settings['updater_checksum'] ?? '');
-                if ($url === '') {
-                    $error_message = 'Update URL not configured in Settings.';
-                    break;
-                }
-                $res = SelfUpdater::updateFromURL($url, $checksum);
-                if ($res['success']) {
-                    $success_message = $res['message'] ?? 'Updated successfully.';
-                } else {
-                    $error_message = $res['error'] ?? 'Update failed.';
-                }
-                break;
-
-            case 'run_zip_updater':
-                if (!isset($_FILES['update_zip']) || $_FILES['update_zip']['error'] !== UPLOAD_ERR_OK) {
-                    $error_message = 'Please upload a ZIP file.';
-                    break;
-                }
-                $tmpPath = $_FILES['update_zip']['tmp_name'];
-                $res = SelfUpdater::updateFromZipFile($tmpPath);
+                // Use default branch (SelfUpdater will default to main)
+                $res = SelfUpdater::updateFromGitHub($repo, '', $token);
                 if ($res['success']) {
                     $success_message = $res['message'] ?? 'Updated successfully.';
                 } else {
@@ -127,27 +97,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Get system statistics
-$all_posts = all_posts();
-$published_posts = get_posts_by_status('published');
-$draft_posts = get_posts_by_status('draft');
-
-// Get backup information
-$backup_dir = __DIR__ . '/backups/';
-$backups = [];
-if (is_dir($backup_dir)) {
-    $backup_files = glob($backup_dir . '*.zip');
-    foreach ($backup_files as $file) {
-        $backups[] = [
-            'name' => basename($file),
-            'size' => filesize($file),
-            'date' => filemtime($file)
-        ];
+// Load settings once for UI (repo/token display)
+$ui_settings = load_settings();
+// Prepare friendly repo display/link and token status for the UI
+$rawRepo = trim($ui_settings['updater_repo'] ?? '');
+$displayRepo = $rawRepo;
+$repoUrl = '';
+if ($rawRepo !== '') {
+    if (stripos($rawRepo, 'github.com') !== false) {
+        $u = @parse_url($rawRepo);
+        $p = isset($u['path']) ? trim($u['path'], "/ ") : '';
+        if ($p !== '') {
+            $seg = explode('/', $p);
+            if (count($seg) >= 2) {
+                $owner = $seg[0];
+                $name = preg_replace('/\.git$/i', '', $seg[1]);
+                $displayRepo = $owner . '/' . $name;
+                $repoUrl = 'https://github.com/' . rawurlencode($owner) . '/' . rawurlencode($name);
+            }
+        }
+    } elseif (strpos($rawRepo, '/') !== false) {
+        list($owner, $name) = explode('/', $rawRepo, 2);
+        $name = preg_replace('/\.git$/i', '', $name);
+        $displayRepo = $owner . '/' . $name;
+        $repoUrl = 'https://github.com/' . rawurlencode($owner) . '/' . rawurlencode($name);
     }
-    usort($backups, function ($a, $b) {
-        return $b['date'] - $a['date'];
-    });
 }
+$tokenSet = !empty($ui_settings['updater_token']);
+$repoConfigured = $displayRepo !== '';
 
 ?>
 <!DOCTYPE html>
@@ -228,57 +205,45 @@ if (is_dir($backup_dir)) {
                         </div>
                     <?php endif; ?>
 
-                    <!-- System Statistics -->
-                    <div class="row mb-4">
-                        <div class="col-lg-3 col-md-6 mb-3">
-                            <div class="card stats-card">
-                                <div class="card-body text-center">
-                                    <div class="stats-icon mb-3">
-                                        <i class="bi bi-file-text text-dark"></i>
+                    <!-- Tools (compact 3-column layout) -->
+                    <div class="row g-4">
+                        <!-- Self-Updater -->
+                        <div class="col-lg-4">
+                            <div class="card">
+                                <div class="card-header" style="background: linear-gradient(135deg, #000 0%, #333 100%); color: white; border: none;">
+                                    <h5 class="mb-0">
+                                        <i class="bi bi-cloud-arrow-down me-2"></i>Self-Updater
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-2 small text-muted">
+                                        Repo: <?php if (!empty($repoUrl)): ?>
+                                            <a href="<?php echo htmlspecialchars($repoUrl); ?>" target="_blank" rel="noopener noreferrer">
+                                                <code><?php echo htmlspecialchars($displayRepo); ?></code>
+                                            </a>
+                                        <?php else: ?>
+                                            <code><?php echo htmlspecialchars($displayRepo ?: 'Not configured'); ?></code>
+                                        <?php endif; ?>
                                     </div>
-                                    <h6 class="card-title text-muted mb-1">Total Posts</h6>
-                                    <h3 class="mb-0 text-dark"><?php echo count($all_posts); ?></h3>
+                                    <div class="mb-2 small text-muted">
+                                        Access: <span class="badge bg-<?php echo $tokenSet ? 'success' : 'info'; ?>"><?php echo $tokenSet ? 'Private repo access (token set)' : 'Public repo (no token needed)'; ?></span>
+                                    </div>
+                                    <form method="POST" class="mt-3">
+                                        <input type="hidden" name="action" value="run_updater">
+                                        <button type="submit" class="btn btn-dark btn-sm w-100">
+                                            <i class="bi bi-cloud-arrow-down"></i> Update Now
+                                        </button>
+                                    </form>
+                                    <a href="<?php echo BASE_URL; ?>admin/settings#" class="btn btn-outline-dark btn-sm w-100 mt-2">
+                                        <i class="bi bi-gear"></i> Configure
+                                    </a>
+                                    <div class="form-text mt-2">Pulls latest code from GitHub. Content, uploads, logs, and config are preserved.</div>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-lg-3 col-md-6 mb-3">
-                            <div class="card stats-card">
-                                <div class="card-body text-center">
-                                    <div class="stats-icon mb-3">
-                                        <i class="bi bi-check-circle text-dark"></i>
-                                    </div>
-                                    <h6 class="card-title text-muted mb-1">Published</h6>
-                                    <h3 class="mb-0 text-dark"><?php echo count($published_posts); ?></h3>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-lg-3 col-md-6 mb-3">
-                            <div class="card stats-card">
-                                <div class="card-body text-center">
-                                    <div class="stats-icon mb-3">
-                                        <i class="bi bi-pencil text-dark"></i>
-                                    </div>
-                                    <h6 class="card-title text-muted mb-1">Drafts</h6>
-                                    <h3 class="mb-0 text-dark"><?php echo count($draft_posts); ?></h3>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-lg-3 col-md-6 mb-3">
-                            <div class="card stats-card">
-                                <div class="card-body text-center">
-                                    <div class="stats-icon mb-3">
-                                        <i class="bi bi-archive text-dark"></i>
-                                    </div>
-                                    <h6 class="card-title text-muted mb-1">Backups</h6>
-                                    <h3 class="mb-0 text-dark"><?php echo count($backups); ?></h3>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
 
-                    <!-- Maintenance Tools -->
-                    <div class="row">
-                        <div class="col-lg-6">
+                        <!-- Maintenance -->
+                        <div class="col-lg-4">
                             <div class="card">
                                 <div class="card-header" style="background: linear-gradient(135deg, #000 0%, #333 100%); color: white; border: none;">
                                     <h5 class="mb-0">
@@ -336,56 +301,13 @@ if (is_dir($backup_dir)) {
                                         </button>
                                     </form>
 
-                                    <!-- Run Self-Updater -->
-                                    <form method="POST" class="mb-3">
-                                        <input type="hidden" name="action" value="run_updater">
-                                        <div class="d-flex align-items-center mb-2">
-                                            <i class="bi bi-cloud-arrow-down text-primary me-2"></i>
-                                            <strong>Run Self-Updater</strong>
-                                        </div>
-                                        <p class="text-muted small mb-2">Fetch and apply latest code from configured GitHub repo.</p>
-                                        <button type="submit" class="btn btn-dark btn-sm">
-                                            <i class="bi bi-cloud-arrow-down"></i> Update Now
-                                        </button>
-                                    </form>
-
-                                    <!-- Run URL Updater -->
-                                    <form method="POST" class="mb-3">
-                                        <input type="hidden" name="action" value="run_url_updater">
-                                        <div class="d-flex align-items-center mb-2">
-                                            <i class="bi bi-link-45deg text-primary me-2"></i>
-                                            <strong>Update from Public URL</strong>
-                                        </div>
-                                        <p class="text-muted small mb-2">Uses the Update URL and optional checksum from Settings.</p>
-                                        <button type="submit" class="btn btn-dark btn-sm">
-                                            <i class="bi bi-link-45deg"></i> Update From URL
-                                        </button>
-                                    </form>
-
-                                    <!-- Upload Update ZIP -->
-                                    <form method="POST" enctype="multipart/form-data" class="mb-3">
-                                        <input type="hidden" name="action" value="run_zip_updater">
-                                        <div class="d-flex align-items-center mb-2">
-                                            <i class="bi bi-upload text-primary me-2"></i>
-                                            <strong>Upload Update ZIP</strong>
-                                        </div>
-                                        <div class="row g-2 align-items-center mb-2">
-                                            <div class="col-9">
-                                                <input type="file" name="update_zip" class="form-control form-control-sm" accept="application/zip" required>
-                                            </div>
-                                            <div class="col-3">
-                                                <button type="submit" class="btn btn-dark btn-sm w-100">
-                                                    <i class="bi bi-upload"></i> Upload
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <p class="text-muted small mb-0">Safe: skips content/uploads/logs/config.php and settings.json.</p>
-                                    </form>
+                                    <!-- Simplified: only essential maintenance actions below -->
                                 </div>
                             </div>
                         </div>
 
-                        <div class="col-lg-6">
+                        <!-- Backup -->
+                        <div class="col-lg-4">
                             <div class="card">
                                 <div class="card-header" style="background: linear-gradient(135deg, #000 0%, #333 100%); color: white; border: none;">
                                     <h5 class="mb-0">
@@ -406,84 +328,12 @@ if (is_dir($backup_dir)) {
                                         </button>
                                     </form>
 
-                                    <!-- System Health -->
-                                    <div class="mb-3">
-                                        <div class="d-flex align-items-center mb-2">
-                                            <i class="bi bi-heart-pulse text-danger me-2"></i>
-                                            <strong>System Health</strong>
-                                        </div>
-                                        <div class="row text-center">
-                                            <div class="col-4">
-                                                <div class="border rounded p-2">
-                                                    <div class="text-dark"><?php echo round(disk_free_space(__DIR__) / 1024 / 1024 / 1024, 1); ?>GB</div>
-                                                    <small class="text-muted">Free Space</small>
-                                                </div>
-                                            </div>
-                                            <div class="col-4">
-                                                <div class="border rounded p-2">
-                                                    <div class="text-dark"><?php echo round(memory_get_usage() / 1024 / 1024, 1); ?>MB</div>
-                                                    <small class="text-muted">Memory</small>
-                                                </div>
-                                            </div>
-                                            <div class="col-4">
-                                                <div class="border rounded p-2">
-                                                    <div class="text-dark"><?php echo PHP_VERSION; ?></div>
-                                                    <small class="text-muted">PHP</small>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <!-- System Health removed to keep tools minimal -->
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Recent Backups -->
-                    <?php if (!empty($backups)): ?>
-                        <div class="row mt-4">
-                            <div class="col-12">
-                                <div class="card">
-                                    <div class="card-header" style="background: linear-gradient(135deg, #000 0%, #333 100%); color: white; border: none;">
-                                        <h5 class="mb-0">
-                                            <i class="bi bi-archive me-2"></i>Recent Backups
-                                        </h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="table-responsive">
-                                            <table class="table table-hover">
-                                                <thead>
-                                                    <tr>
-                                                        <th>File Name</th>
-                                                        <th>Size</th>
-                                                        <th>Date</th>
-                                                        <th>Actions</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <?php foreach (array_slice($backups, 0, 5) as $backup): ?>
-                                                        <tr>
-                                                            <td>
-                                                                <i class="bi bi-file-zip text-primary me-2"></i>
-                                                                <?php echo htmlspecialchars($backup['name']); ?>
-                                                            </td>
-                                                            <td><?php echo round($backup['size'] / 1024 / 1024, 2); ?> MB</td>
-                                                            <td><?php echo date('M j, Y g:i A', $backup['date']); ?></td>
-                                                            <td>
-                                                                <a href="backups/<?php echo urlencode($backup['name']); ?>"
-                                                                    class="btn btn-sm btn-outline-dark" download>
-                                                                    <i class="bi bi-download"></i> Download
-                                                                </a>
-                                                            </td>
-                                                        </tr>
-                                                    <?php endforeach; ?>
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    <?php endif; ?>
                 </div>
             </div>
         </div>
