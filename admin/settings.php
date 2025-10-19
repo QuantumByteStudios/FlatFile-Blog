@@ -7,6 +7,24 @@
 
 require_once '../functions.php';
 require_once __DIR__ . '/../libs/SecurityHardener.php';
+require_once __DIR__ . '/../libs/SelfUpdater.php';
+
+// Ensure config constants are available when static analysis runs this file standalone
+if (!defined('CONTENT_DIR') || !defined('BASE_URL') || !defined('SITE_TITLE')) {
+    $cfg = file_exists('../config.php') ? '../config.php' : dirname(__DIR__) . '/config.php';
+    if (file_exists($cfg)) {
+        require_once $cfg;
+    }
+    if (!defined('CONTENT_DIR')) {
+        define('CONTENT_DIR', dirname(__DIR__) . '/content/');
+    }
+    if (!defined('BASE_URL')) {
+        define('BASE_URL', '/');
+    }
+    if (!defined('SITE_TITLE')) {
+        define('SITE_TITLE', 'FlatFile Blog');
+    }
+}
 
 // Initialize security system
 SecurityHardener::init();
@@ -80,6 +98,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 }
             } else {
                 $error_message = "Failed to save settings.";
+            }
+        }
+    } elseif ($_POST['action'] === 'run_updater') {
+        // Verify CSRF token
+        if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+            $error_message = "Invalid CSRF token.";
+        } else {
+            $s = load_settings();
+            $repo = trim($s['updater_repo'] ?? '');
+            $branch = trim($s['updater_branch'] ?? 'main');
+            $token = trim($s['updater_token'] ?? '');
+            if ($repo === '') {
+                $error_message = 'Updater repository not configured in Settings.';
+            } else {
+                if ($token === '') {
+                    $res = SelfUpdater::updateFromPublicRepo($repo, $branch);
+                } else {
+                    $res = SelfUpdater::updateFromGitHub($repo, $branch, $token);
+                }
+                if (!empty($res['success'])) {
+                    $success_message = $res['message'] ?? 'Updated successfully.';
+                } else {
+                    $error_message = $res['error'] ?? 'Update failed.';
+                }
             }
         }
     }
@@ -292,6 +334,9 @@ function update_config_site_title($new_title)
                                                 <div class="d-grid">
                                                     <button type="submit" class="btn btn-primary">
                                                         <i class="bi bi-check-circle"></i> Save Settings
+                                                    </button>
+                                                    <button type="submit" name="action" value="run_updater" class="btn btn-outline-dark ms-2">
+                                                        <i class="bi bi-cloud-arrow-down"></i> Update Now
                                                     </button>
                                                 </div>
                                             </div>
