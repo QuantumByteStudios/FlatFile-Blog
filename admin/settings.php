@@ -45,6 +45,9 @@ if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== tru
     exit;
 }
 
+// Env fallback for OpenAI key (used for display and optional fallback)
+$envOpenAI = getenv('OPENAI_API_KEY') ?: (getenv('GITHUB_MODELS_TOKEN') ?: getenv('GITHUB_TOKEN')) ?: '';
+
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if ($_POST['action'] === 'update_settings') {
@@ -61,7 +64,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
             // Compute sensitive and optional fields
             $business_info = trim($_POST['business_info'] ?? ($existing_settings['business_info'] ?? ''));
-            $openai_api_key = trim($_POST['openai_api_key'] ?? ($existing_settings['openai_api_key'] ?? ''));
+            // Prefer explicit POST value if non-empty; else keep saved; else fallback to env
+            if (isset($_POST['openai_api_key']) && trim($_POST['openai_api_key']) !== '') {
+                $openai_api_key = trim($_POST['openai_api_key']);
+            } elseif (!empty($existing_settings['openai_api_key'])) {
+                $openai_api_key = $existing_settings['openai_api_key'];
+            } else {
+                $openai_api_key = $envOpenAI;
+            }
             $openai_model = trim($_POST['openai_model'] ?? ($existing_settings['openai_model'] ?? 'openai/gpt-4o-mini'));
             $openai_endpoint = trim($_POST['openai_endpoint'] ?? ($existing_settings['openai_endpoint'] ?? 'https://models.github.ai/inference'));
             $updater_repo = trim($_POST['updater_repo'] ?? ($existing_settings['updater_repo'] ?? ''));
@@ -150,6 +160,11 @@ $settings = array_merge([
     'updater_url' => '',
     'updater_checksum' => ''
 ], $current_settings);
+
+// If no saved key, show env fallback in the textbox for convenience
+if ((trim($settings['openai_api_key'] ?? '') === '') && $envOpenAI !== '') {
+    $settings['openai_api_key'] = $envOpenAI;
+}
 
 // Function to update config.php
 function update_config_site_title($new_title)
@@ -276,70 +291,72 @@ function update_config_site_title($new_title)
                                                         value="<?php echo $settings['posts_per_page']; ?>" min="1" max="50">
                                                 </div>
 
-                                                <!-- AI Settings (OpenAI only) -->
-                                                <div class="card mb-3">
-                                                    <div class="card-header">
-                                                        <h5 class="mb-0"><i class="bi bi-robot"></i> AI Settings</h5>
-                                                    </div>
-                                                    <div class="card-body">
-                                                        <div class="mb-3">
-                                                            <label for="openai_api_key" class="form-label">GitHub Models Token</label>
-                                                            <input type="password" class="form-control" id="openai_api_key" name="openai_api_key" placeholder="Paste GitHub token">
-                                                            <div class="form-text">Stored server-side. Leave blank to keep current.</div>
-                                                        </div>
-                                                        <div class="mb-3">
-                                                            <label for="openai_model" class="form-label">OpenAI Model</label>
-                                                            <input type="text" class="form-control" id="openai_model" name="openai_model" value="<?php echo htmlspecialchars($settings['openai_model']); ?>">
-                                                            <div class="form-text">Examples: openai/gpt-4o-mini (low cost), openai/gpt-4o</div>
-                                                        </div>
-                                                        <div class="mb-3">
-                                                            <label for="openai_endpoint" class="form-label">OpenAI Endpoint</label>
-                                                            <input type="text" class="form-control" id="openai_endpoint" name="openai_endpoint" value="<?php echo htmlspecialchars($settings['openai_endpoint']); ?>">
-                                                            <div class="form-text">Default: https://models.github.ai/inference</div>
-                                                        </div>
 
-                                                        <div class="mb-3">
-                                                            <label for="business_info" class="form-label">Business Information</label>
-                                                            <textarea class="form-control" id="business_info" name="business_info" rows="4"
-                                                                placeholder="Describe your business, audience, offerings, tone, location, etc."><?php echo htmlspecialchars($settings['business_info']); ?></textarea>
-                                                            <div class="form-text">Used to personalize AI-generated posts.</div>
-                                                        </div>
-                                                    </div>
+                                            </div>
+                                        </div>
 
-                                                    <!-- Updater Settings -->
-                                                    <div class="card mb-3">
-                                                        <div class="card-header">
-                                                            <h5 class="mb-0"><i class="bi bi-cloud-arrow-down"></i> Self-Updater</h5>
-                                                        </div>
-                                                        <div class="card-body">
-                                                            <div class="row g-3 align-items-end">
-                                                                <div class="col-md-6">
-                                                                    <label for="updater_repo" class="form-label">GitHub Repository (owner/repo or full URL)</label>
-                                                                    <input type="text" class="form-control" id="updater_repo" name="updater_repo" value="<?php echo htmlspecialchars($settings['updater_repo']); ?>" placeholder="https://github.com/QuantumByteStudios/FlatFile-Blog">
-                                                                    <div class="form-text">You can enter <code>owner/repo</code> or the full GitHub URL. The default is this repo.</div>
-                                                                </div>
-                                                                <div class="col-md-6">
-                                                                    <label for="updater_token" class="form-label">GitHub Token</label>
-                                                                    <input type="text" class="form-control" id="updater_token" name="updater_token" value="<?php echo htmlspecialchars($settings['updater_token']); ?>" placeholder="Required for private repos">
-                                                                    <div class="form-text">Saved server-side; shown here if previously set.</div>
-                                                                </div>
-                                                            </div>
-                                                            <div class="mt-3 small text-muted">
-                                                                Updates pull the latest code from the repository's default branch (usually <code>main</code>). User content and <code>config.php</code> are preserved.
-                                                            </div>
-                                                        </div>
+                                        <!-- AI Settings (OpenAI only) -->
+                                        <div class="card mb-4">
+                                            <div class="card-header">
+                                                <h5 class="mb-0"><i class="bi bi-robot"></i> AI Settings</h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="mb-3">
+                                                    <label for="openai_api_key" class="form-label">GitHub Models Token</label>
+                                                    <input type="text" class="form-control" id="openai_api_key" name="openai_api_key" value="<?php echo htmlspecialchars($settings['openai_api_key']); ?>" placeholder="Paste GitHub token">
+                                                    <div class="form-text">Saved server-side.</div>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="openai_model" class="form-label">OpenAI Model</label>
+                                                    <input type="text" class="form-control" id="openai_model" name="openai_model" value="<?php echo htmlspecialchars($settings['openai_model']); ?>">
+                                                    <div class="form-text">Examples: openai/gpt-4o-mini (low cost), openai/gpt-4o</div>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="openai_endpoint" class="form-label">OpenAI Endpoint</label>
+                                                    <input type="text" class="form-control" id="openai_endpoint" name="openai_endpoint" value="<?php echo htmlspecialchars($settings['openai_endpoint']); ?>">
+                                                    <div class="form-text">Default: https://models.github.ai/inference</div>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="business_info" class="form-label">Business Information</label>
+                                                    <textarea class="form-control" id="business_info" name="business_info" rows="4" placeholder="Describe your business, audience, offerings, tone, location, etc."><?php echo htmlspecialchars($settings['business_info']); ?></textarea>
+                                                    <div class="form-text">Used to personalize AI-generated posts.</div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Self-Updater -->
+                                        <div class="card mb-4">
+                                            <div class="card-header">
+                                                <h5 class="mb-0"><i class="bi bi-cloud-arrow-down"></i> Self-Updater</h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="row g-3 align-items-end">
+                                                    <div class="col-md-6">
+                                                        <label for="updater_repo" class="form-label">GitHub Repository (owner/repo or full URL)</label>
+                                                        <input type="text" class="form-control" id="updater_repo" name="updater_repo" value="<?php echo htmlspecialchars($settings['updater_repo']); ?>" placeholder="https://github.com/QuantumByteStudios/FlatFile-Blog">
+                                                        <div class="form-text">You can enter <code>owner/repo</code> or the full GitHub URL. The default is this repo.</div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label for="updater_token" class="form-label">GitHub Token</label>
+                                                        <input type="text" class="form-control" id="updater_token" name="updater_token" value="<?php echo htmlspecialchars($settings['updater_token']); ?>" placeholder="Required for private repos">
+                                                        <div class="form-text">Saved server-side; shown here if previously set.</div>
                                                     </div>
                                                 </div>
-
-                                                <div class="d-grid">
-                                                    <button type="submit" class="btn btn-primary">
-                                                        <i class="bi bi-check-circle"></i> Save Settings
-                                                    </button>
-                                                    <button type="submit" name="action" value="run_updater" class="btn btn-outline-dark ms-2">
+                                                <div class="mt-3 small text-muted">
+                                                    Updates pull the latest code from the repository's default branch (usually <code>main</code>). User content and <code>config.php</code> are preserved.
+                                                </div>
+                                                <div class="mt-3 d-flex justify-content-end">
+                                                    <button type="submit" name="action" value="run_updater" class="btn btn-outline-dark">
                                                         <i class="bi bi-cloud-arrow-down"></i> Update Now
                                                     </button>
                                                 </div>
                                             </div>
+                                        </div>
+
+                                        <div class="d-grid">
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="bi bi-check-circle"></i> Save Settings
+                                            </button>
                                         </div>
                                     </div>
                                 </div>

@@ -47,6 +47,18 @@ class SelfUpdater
             }
         }
 
+        // Try git-based update first if possible
+        $projectRoot = dirname(__DIR__);
+        $git = self::findGitBinary();
+        if ($git) {
+            $repoUrl = self::normalizeRepoUrl($owner, $name);
+            $gitResult = self::updateViaGit($git, $projectRoot, $repoUrl, $resolvedBranch);
+            if ($gitResult['success']) {
+                return $gitResult; // Updated via git
+            }
+            // If git failed, fall back to ZIP method below
+        }
+
         $tmpDir = CONTENT_DIR . 'tmp_updater/';
         $zipFile = $tmpDir . 'update.zip';
         $extractDir = $tmpDir . 'extract/';
@@ -130,7 +142,11 @@ class SelfUpdater
         }
 
         $excludes = [
-            '/content/', '/uploads/', '/logs/', '/config.php', '/content/settings.json'
+            '/content/',
+            '/uploads/',
+            '/logs/',
+            '/config.php',
+            '/content/settings.json'
         ];
         $copy = self::copyRecursive($sourceDir, dirname(__DIR__), $excludes);
         if (!$copy['success']) {
@@ -303,6 +319,110 @@ class SelfUpdater
         return ['success' => true];
     }
 
+    private static function findGitBinary()
+    {
+        // Basic detection: assume 'git' is on PATH
+        $cmd = '\\' === DIRECTORY_SEPARATOR ? 'git --version' : 'git --version';
+        $out = @shell_exec($cmd . ' 2>&1');
+        if (is_string($out) && stripos($out, 'git version') !== false) {
+            return 'git';
+        }
+        // Fallback: try common Windows install path
+        $winGit = 'C:\\Program Files\\Git\\bin\\git.exe';
+        if (is_file($winGit)) {
+            $out = @shell_exec('"' . $winGit . '" --version 2>&1');
+            if (is_string($out) && stripos($out, 'git version') !== false) {
+                return '"' . $winGit . '"';
+            }
+        }
+        return null;
+    }
+
+    private static function runProcess($command, $cwd)
+    {
+        $descriptorspec = [
+            0 => ['pipe', 'r'],
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w']
+        ];
+        $process = @proc_open($command, $descriptorspec, $pipes, $cwd, null);
+        if (!is_resource($process)) {
+            // Fallback to shell_exec if proc_open disabled
+            $output = @shell_exec($command . ' 2>&1');
+            $code = ($output === null) ? 1 : 0;
+            return ['code' => $code, 'stdout' => (string)$output, 'stderr' => ''];
+        }
+        fclose($pipes[0]);
+        $stdout = stream_get_contents($pipes[1]);
+        fclose($pipes[1]);
+        $stderr = stream_get_contents($pipes[2]);
+        fclose($pipes[2]);
+        $status = proc_close($process);
+        return ['code' => $status, 'stdout' => (string)$stdout, 'stderr' => (string)$stderr];
+    }
+
+    private static function normalizeRepoUrl($owner, $name)
+    {
+        // Use HTTPS URL to avoid credential prompts for public repos
+        return 'https://github.com/' . rawurlencode($owner) . '/' . rawurlencode($name) . '.git';
+    }
+
+    private static function updateViaGit($git, $root, $repoUrl, $branch)
+    {
+        $gitDir = rtrim($root, '\\/') . DIRECTORY_SEPARATOR . '.git';
+        if (is_dir($gitDir)) {
+            // Ensure remote origin exists and points to repoUrl
+            $remoteCheck = self::runProcess($git . ' remote get-url origin', $root);
+            if ($remoteCheck['code'] !== 0) {
+                $add = self::runProcess($git . ' remote add origin ' . escapeshellarg($repoUrl), $root);
+                if ($add['code'] !== 0) {
+                    return ['success' => false, 'error' => 'git remote add failed: ' . $add['stderr']];
+                }
+            }
+            // Fetch and hard reset to origin/branch (leave untracked files alone)
+            $fetch = self::runProcess($git . ' fetch --prune origin', $root);
+            if ($fetch['code'] !== 0) {
+                return ['success' => false, 'error' => 'git fetch failed: ' . $fetch['stderr']];
+            }
+            // Ensure branch exists locally, then reset
+            $checkout = self::runProcess($git . ' checkout -B ' . escapeshellarg($branch) . ' --track origin/' . escapeshellarg($branch), $root);
+            if ($checkout['code'] !== 0) {
+                // Try without --track if branch already exists
+                $checkout = self::runProcess($git . ' checkout -B ' . escapeshellarg($branch), $root);
+                if ($checkout['code'] !== 0) {
+                    return ['success' => false, 'error' => 'git checkout failed: ' . $checkout['stderr']];
+                }
+            }
+            $reset = self::runProcess($git . ' reset --hard origin/' . escapeshellarg($branch), $root);
+            if ($reset['code'] !== 0) {
+                return ['success' => false, 'error' => 'git reset failed: ' . $reset['stderr']];
+            }
+            // Optional: submodules
+            self::runProcess($git . ' submodule update --init --recursive', $root);
+            return ['success' => true, 'message' => 'Updated via git to branch ' . $branch];
+        }
+
+        // Not a git repo: try shallow clone to temp and copy over (non-destructive)
+        $tmpDir = CONTENT_DIR . 'tmp_updater_git/';
+        $cloneDir = rtrim($tmpDir, '\\/') . DIRECTORY_SEPARATOR . 'clone';
+        self::rrmdir($tmpDir);
+        @mkdir($tmpDir, 0755, true);
+        $cloneCmd = $git . ' clone --depth 1 --branch ' . escapeshellarg($branch) . ' ' . escapeshellarg($repoUrl) . ' ' . escapeshellarg($cloneDir);
+        $clone = self::runProcess($cloneCmd, $tmpDir);
+        if ($clone['code'] !== 0) {
+            self::rrmdir($tmpDir);
+            return ['success' => false, 'error' => 'git clone failed: ' . $clone['stderr']];
+        }
+        // Copy from clone into project root, excluding user data
+        $excludes = ['/content/', '/uploads/', '/logs/', '/config.php', '/content/settings.json'];
+        $copy = self::copyRecursive($cloneDir, $root, $excludes);
+        self::rrmdir($tmpDir);
+        if (!$copy['success']) {
+            return $copy;
+        }
+        return ['success' => true, 'message' => 'Updated via git clone to branch ' . $branch];
+    }
+
     private static function unzip($zipFile, $extractTo)
     {
         if (!class_exists('ZipArchive')) {
@@ -368,5 +488,3 @@ class SelfUpdater
         @rmdir($dir);
     }
 }
-
-
