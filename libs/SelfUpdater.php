@@ -2,6 +2,92 @@
 
 class SelfUpdater
 {
+    /**
+     * Update from a PUBLIC GitHub repository. No token needed.
+     * Accepts owner/repo or full GitHub URL. If branch is empty, resolves default_branch.
+     */
+    public static function updateFromPublicRepo($repo, $branch = '')
+    {
+        $repo = trim($repo);
+        if ($repo === '') {
+            return ['success' => false, 'error' => 'Repository not provided'];
+        }
+
+        // Normalize full URL to owner/repo
+        if (stripos($repo, 'github.com') !== false) {
+            $u = @parse_url($repo);
+            $p = isset($u['path']) ? trim($u['path'], "/ ") : '';
+            if ($p !== '') {
+                $seg = explode('/', $p);
+                if (count($seg) >= 2) {
+                    $ownerPart = $seg[0];
+                    $repoPart = preg_replace('/\.git$/i', '', $seg[1]);
+                    $repo = $ownerPart . '/' . $repoPart;
+                }
+            }
+        }
+        if (strpos($repo, '/') === false) {
+            return ['success' => false, 'error' => 'Invalid repo format. Use owner/repo or GitHub URL'];
+        }
+
+        list($owner, $name) = explode('/', $repo, 2);
+        $owner = trim($owner);
+        $name = preg_replace('/\.git$/i', '', trim($name));
+
+        // Resolve default branch if none provided
+        $resolvedBranch = trim($branch);
+        if ($resolvedBranch === '') {
+            $apiUrl = 'https://api.github.com/repos/' . rawurlencode($owner) . '/' . rawurlencode($name);
+            $json = self::httpGetJson($apiUrl);
+            if (is_array($json) && !empty($json['default_branch'])) {
+                $resolvedBranch = $json['default_branch'];
+            } else {
+                // Fallback guesses
+                $resolvedBranch = 'main';
+            }
+        }
+
+        $tmpDir = CONTENT_DIR . 'tmp_updater/';
+        $zipFile = $tmpDir . 'update.zip';
+        $extractDir = $tmpDir . 'extract/';
+
+        self::rrmdir($tmpDir);
+        if (!is_dir($tmpDir)) {
+            @mkdir($tmpDir, 0755, true);
+        }
+
+        // Use codeload which doesn't require auth
+        $downloadUrl = 'https://codeload.github.com/' . rawurlencode($owner) . '/' . rawurlencode($name) . '/zip/refs/heads/' . rawurlencode($resolvedBranch);
+        $dl = self::download($downloadUrl, $zipFile, '');
+        if (!$dl['success']) {
+            return $dl;
+        }
+
+        $ok = self::unzip($zipFile, $extractDir);
+        if (!$ok['success']) {
+            return $ok;
+        }
+
+        // Find source directory
+        $dirEntries = glob($extractDir . '*', GLOB_ONLYDIR);
+        $sourceDir = $dirEntries && is_dir($dirEntries[0]) ? rtrim($dirEntries[0], '\\/') : rtrim($extractDir, '\\/');
+
+        // Copy files while preserving user data
+        $excludes = [
+            '/content/',
+            '/uploads/',
+            '/logs/',
+            '/config.php',
+            '/content/settings.json'
+        ];
+        $copy = self::copyRecursive($sourceDir, dirname(__DIR__), $excludes);
+        if (!$copy['success']) {
+            return $copy;
+        }
+
+        self::rrmdir($tmpDir);
+        return ['success' => true, 'message' => 'Updated from ' . $owner . '/' . $name . '@' . $resolvedBranch];
+    }
     public static function updateFromURL($url, $checksum = '')
     {
         $url = trim($url);
@@ -172,6 +258,23 @@ class SelfUpdater
 
         self::rrmdir($tmpDir);
         return ['success' => true, 'message' => 'Updated to latest from ' . $repo . '@' . $branch];
+    }
+
+    private static function httpGetJson($url)
+    {
+        $ctx = stream_context_create([
+            'http' => [
+                'method' => 'GET',
+                'header' => "User-Agent: FlatFile-Blog-Updater\r\nAccept: application/vnd.github+json",
+                'timeout' => 15
+            ]
+        ]);
+        $body = @file_get_contents($url, false, $ctx);
+        if ($body === false) {
+            return null;
+        }
+        $data = json_decode($body, true);
+        return is_array($data) ? $data : null;
     }
 
     private static function download($url, $dest, $token)

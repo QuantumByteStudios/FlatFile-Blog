@@ -80,8 +80,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $error_message = 'Updater repository not configured in Settings.';
                     break;
                 }
-                // Use default branch (SelfUpdater will default to main)
-                $res = SelfUpdater::updateFromGitHub($repo, '', $token);
+                // If no token, use public updater path; else use token-based path
+                if ($token === '') {
+                    $res = SelfUpdater::updateFromPublicRepo($repo, '');
+                } else {
+                    $res = SelfUpdater::updateFromGitHub($repo, '', $token);
+                }
                 if ($res['success']) {
                     $success_message = $res['message'] ?? 'Updated successfully.';
                 } else {
