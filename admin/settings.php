@@ -102,7 +102,7 @@ $settings = array_merge([
     'openai_api_key' => '',
     'openai_model' => 'openai/gpt-4o-mini',
     'openai_endpoint' => 'https://models.github.ai/inference',
-    'updater_repo' => '',
+    'updater_repo' => 'https://github.com/QuantumByteStudios/FlatFile-Blog',
     'updater_branch' => 'main',
     'updater_token' => '',
     'updater_url' => '',
@@ -209,16 +209,9 @@ function update_config_site_title($new_title)
                                         <!-- Blog Information -->
                                         <div class="card mb-4">
                                             <div class="card-body">
+                                                <!-- Provider selection removed: Only OpenAI (GitHub Models) supported -->
                                                 <div class="mb-3">
-                                                    <label for="ai_provider" class="form-label">Provider</label>
-                                                    <select class="form-select" id="ai_provider" name="ai_provider">
-                                                        <option value="google" <?php echo ($settings['ai_provider'] ?? '') === 'google' ? 'selected' : ''; ?>>Google AI Studio (Gemini)</option>
-                                                        <option value="openai" <?php echo ($settings['ai_provider'] ?? '') === 'openai' ? 'selected' : ''; ?>>OpenAI via GitHub Models</option>
-                                                    </select>
-                                                    <div class="form-text">Choose your AI provider. Flash/mini models are lower cost.</div>
-                                                </div>
-                                    <div class="mb-3">
-                                        <label for="site_title" class="form-label">Site Title *</label>
+                                                    <label for="site_title" class="form-label">Site Title *</label>
                                                     <input type="text" class="form-control" id="site_title" name="site_title"
                                                         value="<?php echo htmlspecialchars($settings['site_title']); ?>" required>
                                                 </div>
@@ -241,23 +234,23 @@ function update_config_site_title($new_title)
                                                         value="<?php echo $settings['posts_per_page']; ?>" min="1" max="50">
                                                 </div>
 
-                                <!-- AI Settings (OpenAI only) -->
-                                <div class="card mb-3">
-                                    <div class="card-header">
-                                        <h5 class="mb-0"><i class="bi bi-robot"></i> AI Settings</h5>
-                                    </div>
-                                    <div class="card-body">
-                                    <div class="mb-3">
-                                            <label for="openai_api_key" class="form-label">GitHub Models Token</label>
-                                            <input type="password" class="form-control" id="openai_api_key" name="openai_api_key" placeholder="Paste GitHub token">
-                                            <div class="form-text">Stored server-side. Leave blank to keep current.</div>
-                                        </div>
-                                    <div class="mb-3">
+                                                <!-- AI Settings (OpenAI only) -->
+                                                <div class="card mb-3">
+                                                    <div class="card-header">
+                                                        <h5 class="mb-0"><i class="bi bi-robot"></i> AI Settings</h5>
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <div class="mb-3">
+                                                            <label for="openai_api_key" class="form-label">GitHub Models Token</label>
+                                                            <input type="password" class="form-control" id="openai_api_key" name="openai_api_key" placeholder="Paste GitHub token">
+                                                            <div class="form-text">Stored server-side. Leave blank to keep current.</div>
+                                                        </div>
+                                                        <div class="mb-3">
                                                             <label for="openai_model" class="form-label">OpenAI Model</label>
                                                             <input type="text" class="form-control" id="openai_model" name="openai_model" value="<?php echo htmlspecialchars($settings['openai_model']); ?>">
                                                             <div class="form-text">Examples: openai/gpt-4o-mini (low cost), openai/gpt-4o</div>
                                                         </div>
-                                    <div class="mb-3">
+                                                        <div class="mb-3">
                                                             <label for="openai_endpoint" class="form-label">OpenAI Endpoint</label>
                                                             <input type="text" class="form-control" id="openai_endpoint" name="openai_endpoint" value="<?php echo htmlspecialchars($settings['openai_endpoint']); ?>">
                                                             <div class="form-text">Default: https://models.github.ai/inference</div>
@@ -271,41 +264,29 @@ function update_config_site_title($new_title)
                                                         </div>
                                                     </div>
 
-								<!-- Updater Settings -->
-								<div class="card mb-3">
-									<div class="card-header">
-										<h5 class="mb-0"><i class="bi bi-cloud-arrow-down"></i> Self-Updater</h5>
-									</div>
-									<div class="card-body">
-										<div class="mb-3">
-											<label for="updater_repo" class="form-label">GitHub Repository (owner/repo)</label>
-											<input type="text" class="form-control" id="updater_repo" name="updater_repo" value="<?php echo htmlspecialchars($settings['updater_repo']); ?>" placeholder="owner/repo">
-										</div>
-										<div class="row">
-											<div class="col-md-6 mb-3">
-												<label for="updater_branch" class="form-label">Branch</label>
-												<input type="text" class="form-control" id="updater_branch" name="updater_branch" value="<?php echo htmlspecialchars($settings['updater_branch']); ?>" placeholder="main">
-											</div>
-											<div class="col-md-6 mb-3">
-												<label for="updater_token" class="form-label">GitHub Token (optional)</label>
-												<input type="password" class="form-control" id="updater_token" name="updater_token" placeholder="Token for private repo">
-												<div class="form-text">Stored server-side. Leave blank to keep current.</div>
-											</div>
-										</div>
-
-										<hr>
-										<div class="mb-3">
-											<label for="updater_url" class="form-label">Public Update URL (ZIP)</label>
-											<input type="url" class="form-control" id="updater_url" name="updater_url" value="<?php echo htmlspecialchars($settings['updater_url']); ?>" placeholder="https://.../latest.zip">
-											<div class="form-text">If set, updater can fetch updates without any token.</div>
-										</div>
-										<div class="mb-3">
-											<label for="updater_checksum" class="form-label">ZIP SHA-256 Checksum (optional)</label>
-											<input type="text" class="form-control" id="updater_checksum" name="updater_checksum" value="<?php echo htmlspecialchars($settings['updater_checksum']); ?>" placeholder="sha256 hex">
-											<div class="form-text">Verifies integrity of the downloaded ZIP.</div>
-										</div>
-									</div>
-								</div>
+                                                    <!-- Updater Settings -->
+                                                    <div class="card mb-3">
+                                                        <div class="card-header">
+                                                            <h5 class="mb-0"><i class="bi bi-cloud-arrow-down"></i> Self-Updater</h5>
+                                                        </div>
+                                                        <div class="card-body">
+                                                            <div class="row g-3 align-items-end">
+                                                                <div class="col-md-6">
+                                                                    <label for="updater_repo" class="form-label">GitHub Repository (owner/repo or full URL)</label>
+                                                                    <input type="text" class="form-control" id="updater_repo" name="updater_repo" value="<?php echo htmlspecialchars($settings['updater_repo']); ?>" placeholder="https://github.com/QuantumByteStudios/FlatFile-Blog">
+                                                                    <div class="form-text">You can enter <code>owner/repo</code> or the full GitHub URL. The default is this repo.</div>
+                                                                </div>
+                                                                <div class="col-md-6">
+                                                                    <label for="updater_token" class="form-label">GitHub Token</label>
+                                                                    <input type="text" class="form-control" id="updater_token" name="updater_token" value="<?php echo htmlspecialchars($settings['updater_token']); ?>" placeholder="Required for private repos">
+                                                                    <div class="form-text">Saved server-side; shown here if previously set.</div>
+                                                                </div>
+                                                            </div>
+                                                            <div class="mt-3 small text-muted">
+                                                                Updates pull the latest code from the repository's default branch (usually <code>main</code>). User content and <code>config.php</code> are preserved.
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </div>
 
                                                 <div class="d-grid">
@@ -318,34 +299,7 @@ function update_config_site_title($new_title)
                                     </div>
                                 </div>
                             </form>
-                            <script>
-                                (function() {
-                                    const provider = document.getElementById('ai_provider');
-                                    const googleEls = document.querySelectorAll('.google-only');
-                                    const openaiEls = document.querySelectorAll('.openai-only');
-
-                                    function toggle() {
-                                        const v = provider.value;
-                                        if (v === 'openai') {
-                                            googleEls.forEach(function(el) {
-                                                el.style.display = 'none';
-                                            });
-                                            openaiEls.forEach(function(el) {
-                                                el.style.display = 'block';
-                                            });
-                                        } else {
-                                            googleEls.forEach(function(el) {
-                                                el.style.display = 'block';
-                                            });
-                                            openaiEls.forEach(function(el) {
-                                                el.style.display = 'none';
-                                            });
-                                        }
-                                    }
-                                    provider.addEventListener('change', toggle);
-                                    toggle();
-                                })();
-                            </script>
+                            <!-- No provider toggle needed -->
                         </div>
                     </div>
                 </div>

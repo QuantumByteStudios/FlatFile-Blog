@@ -242,10 +242,10 @@ $settings = load_settings();
                                         <div class="list-group list-group-flush">
                                             <?php foreach ($recent_posts as $post): ?>
                                                 <div class="list-group-item d-flex justify-content-between align-items-center">
-                                                    <div>
-                                                        <h6 class="mb-1">
+                                                    <div class="flex-grow-1 overflow-hidden" style="min-width:0;">
+                                                        <h6 class="mb-1 text-truncate">
                                                             <a href="<?php echo BASE_URL; ?><?php echo urlencode($post['slug']); ?>"
-                                                                class="text-decoration-none" target="_blank">
+                                                                class="text-decoration-none d-inline-block text-truncate w-100" target="_blank">
                                                                 <?php echo htmlspecialchars($post['title']); ?>
                                                             </a>
                                                         </h6>
@@ -254,7 +254,7 @@ $settings = load_settings();
                                                             By <?php echo htmlspecialchars($post['author']); ?>
                                                         </small>
                                                     </div>
-                                                    <div>
+                                                    <div class="ms-3 text-nowrap">
                                                         <span class="badge bg-<?php echo $post['status'] === 'published' ? 'success' : 'warning'; ?> me-2">
                                                             <?php echo ucfirst($post['status']); ?>
                                                         </span>
@@ -302,8 +302,8 @@ $settings = load_settings();
                                                 <div class="flex-shrink-0">
                                                     <i class="bi bi-<?php echo $post['status'] === 'published' ? 'check-circle text-success' : 'pencil text-warning'; ?>"></i>
                                                 </div>
-                                                <div class="flex-grow-1 ms-2">
-                                                    <div class="fw-bold small">
+                                                <div class="flex-grow-1 ms-2 overflow-hidden" style="min-width:0;">
+                                                    <div class="fw-bold small text-truncate">
                                                         <?php echo htmlspecialchars($post['title']); ?>
                                                     </div>
                                                     <div class="text-muted small">

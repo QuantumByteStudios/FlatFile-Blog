@@ -7,7 +7,7 @@
 /config.php
 
 # settings.json
-/content/settings.json
+/content/*
 
 # Generated files
 /content/index.json
