@@ -100,7 +100,8 @@ class SelfUpdater
             '/uploads/',
             '/logs/',
             '/config.php',
-            '/content/settings.json'
+            '/content/settings.json',
+            '/install.php'
         ];
         $copy = self::copyRecursive($sourceDir, dirname(__DIR__), $excludes);
         if (!$copy['success']) {
@@ -163,7 +164,8 @@ class SelfUpdater
             '/uploads/',
             '/logs/',
             '/config.php',
-            '/content/settings.json'
+            '/content/settings.json',
+            '/install.php'
         ];
         $copy = self::copyRecursive($sourceDir, dirname(__DIR__), $excludes);
         if (!$copy['success']) {
@@ -187,7 +189,7 @@ class SelfUpdater
         if (!$ok['success']) return $ok;
         $entries = glob($extractDir . '*', GLOB_ONLYDIR);
         $sourceDir = $entries ? rtrim($entries[0], '\/') : rtrim($extractDir, '\/');
-        $excludes = ['/content/', '/uploads/', '/logs/', '/config.php', '/content/settings.json'];
+        $excludes = ['/content/', '/uploads/', '/logs/', '/config.php', '/content/settings.json', '/install.php'];
         $copy = self::copyRecursive($sourceDir, dirname(__DIR__), $excludes);
         if (!$copy['success']) return $copy;
         self::rrmdir($tmpDir);
