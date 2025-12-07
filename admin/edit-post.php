@@ -220,13 +220,15 @@ if (isset($_GET['error'])) {
                                         </div>
 
                                         <div class="mb-3">
-                                            <label class="form-label">Created</label>
-                                            <p class="form-control-plaintext"><?php echo date('M j, Y g:i A', strtotime($post['date'])); ?></p>
+                                            <label for="date" class="form-label">Publish Date/Time</label>
+                                            <input type="datetime-local" class="form-control" id="date" name="date"
+                                                value="<?php echo htmlspecialchars(date('Y-m-d\\TH:i', strtotime($post['date']))); ?>">
                                         </div>
 
                                         <div class="mb-3">
-                                            <label class="form-label">Last Updated</label>
-                                            <p class="form-control-plaintext"><?php echo date('M j, Y g:i A', strtotime($post['updated'])); ?></p>
+                                            <label for="updated" class="form-label">Last Edited Time</label>
+                                            <input type="datetime-local" class="form-control" id="updated" name="updated"
+                                                value="<?php echo htmlspecialchars(date('Y-m-d\\TH:i', strtotime($post['updated'] ?? $post['date']))); ?>">
                                         </div>
                                     </div>
                                 </div>
@@ -292,13 +294,14 @@ if (isset($_GET['error'])) {
             const contentTextarea = document.getElementById('content');
 
             if (contentType === 'html') {
-                contentHelp.innerHTML = '<strong>HTML supported:</strong> Use HTML tags like &lt;h1&gt;, &lt;p&gt;, &lt;img&gt;, &lt;a&gt;, etc.';
+                contentHelp.innerHTML = '<strong>HTML supported:</strong> Use only &lt;b&gt;, &lt;i&gt;, &lt;u&gt;, &lt;br&gt;.';
                 contentTextarea.placeholder = 'Write your post content in HTML...';
             } else {
                 contentHelp.innerHTML = '<strong>Markdown supported:</strong> Use **bold**, *italic*, `code`, [links](url), # headers, etc.';
                 contentTextarea.placeholder = 'Write your post content in Markdown...';
             }
         }
+        document.addEventListener('DOMContentLoaded', toggleContentType);
     </script>
 </body>
 

@@ -192,6 +192,20 @@ if (isset($_GET['error'])) {
                                         </div>
 
                                         <div class="mb-3">
+                                            <label for="date" class="form-label">Publish Date/Time</label>
+                                            <input type="datetime-local" class="form-control" id="date" name="date"
+                                                value="<?php echo htmlspecialchars(isset($date) ? date('Y-m-d\\TH:i', strtotime($date)) : date('Y-m-d\\TH:i')); ?>">
+                                            <div class="form-text">Leave as-is for current time.</div>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label for="updated" class="form-label">Last Edited Time</label>
+                                            <input type="datetime-local" class="form-control" id="updated" name="updated"
+                                                value="<?php echo htmlspecialchars(isset($date) ? date('Y-m-d\\TH:i', strtotime($date)) : date('Y-m-d\\TH:i')); ?>">
+                                            <div class="form-text">Defaults to the publish time.</div>
+                                        </div>
+
+                                        <div class="mb-3">
                                             <label for="featured_image" class="form-label">Featured Image</label>
                                             <input type="file" class="form-control" id="featured_image" name="featured_image" accept="image/*">
                                             <div class="form-text">Upload a featured image for this post (JPG, PNG, GIF, WebP)</div>
@@ -287,13 +301,14 @@ if (isset($_GET['error'])) {
             const contentTextarea = document.getElementById('content');
 
             if (contentType === 'html') {
-                contentHelp.innerHTML = '<strong>HTML supported:</strong> Use only <h1>, <h2>, <h3>, <p>.';
+                contentHelp.innerHTML = '<strong>HTML supported:</strong> Use only &lt;b&gt;, &lt;i&gt;, &lt;u&gt;, &lt;br&gt;.';
                 contentTextarea.placeholder = 'Write your post content in HTML...';
             } else {
                 contentHelp.innerHTML = '<strong>Markdown supported:</strong> Use **bold**, *italic*, `code`, [links](url), # headers, etc.';
                 contentTextarea.placeholder = 'Write your post content in Markdown...';
             }
         }
+        document.addEventListener('DOMContentLoaded', toggleContentType);
 
         // AI Generate flow
         (function() {
@@ -326,15 +341,40 @@ if (isset($_GET['error'])) {
                 }
                 setLoading(true);
                 try {
-                    const resp = await fetch('<?php echo BASE_URL; ?>admin_action?action=generate_ai_post&topic=' + encodeURIComponent(topic), {
+                    const url = '<?php echo BASE_URL; ?>admin_action?action=generate_ai_post&topic=' + encodeURIComponent(topic);
+                    const resp = await fetch(url, {
                         method: 'GET',
                         headers: {
                             'Accept': 'application/json'
                         },
                         credentials: 'same-origin'
                     });
-                    const data = await resp.json();
+
+                    // Read raw response text first for better debugging
+                    const rawText = await resp.text();
+                    let data;
+                    try {
+                        data = rawText ? JSON.parse(rawText) : null;
+                    } catch (parseErr) {
+                        // Log detailed info for debugging
+                        try {
+                            const headersObj = {};
+                            resp.headers.forEach((v, k) => headersObj[k] = v);
+                            console.error('AI generate: Failed to parse JSON.', {
+                                url,
+                                status: resp.status,
+                                ok: resp.ok,
+                                headers: headersObj,
+                                body: rawText
+                            });
+                        } catch (_) {
+                            console.error('AI generate: Failed to parse JSON. Raw body:', rawText);
+                        }
+                        throw new Error('Failed to parse AI response');
+                    }
+
                     if (!data.success) {
+                        console.error('AI generate: Server returned error payload:', data);
                         throw new Error(data.error || 'Generation failed');
                     }
                     // Populate fields
@@ -360,6 +400,7 @@ if (isset($_GET['error'])) {
                     const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
                     modal.hide();
                 } catch (e) {
+                    console.error('AI generate: Request failed.', e);
                     errorBox.textContent = e.message || 'Generation error';
                     errorBox.classList.remove('d-none');
                 } finally {

@@ -81,6 +81,8 @@ $top_tags = array_slice($all_tags, 0, 5, true);
 
 // Load settings
 $settings = load_settings();
+$install_warning = file_exists(__DIR__ . '/../install.php');
+$csrf_token = function_exists('generate_csrf_token') ? generate_csrf_token() : ($_SESSION['csrf_token'] ?? '');
 ?>
 
 <!DOCTYPE html>
@@ -160,6 +162,22 @@ $settings = load_settings();
                             Welcome back, Admin
                         </div>
                     </div>
+
+                    <?php if ($install_warning): ?>
+                        <div class="alert alert-danger d-flex justify-content-between align-items-center" role="alert">
+                            <div>
+                                <i class="bi bi-shield-exclamation me-2"></i>
+                                For security, please delete the <code>install.php</code> file from the root directory.
+                            </div>
+                            <form method="POST" action="<?php echo BASE_URL; ?>admin_action" class="ms-3">
+                                <input type="hidden" name="action" value="delete_install_file">
+                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
+                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete install.php now?');">
+                                    <i class="bi bi-trash"></i> Delete install.php
+                                </button>
+                            </form>
+                        </div>
+                    <?php endif; ?>
 
                     <!-- Stats Cards -->
                     <div class="row mb-4">

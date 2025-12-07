@@ -173,7 +173,7 @@ $site_description = $settings['site_description'] ?? 'A simple, fast, and secure
                     <span>&copy; <?php echo date('Y'); ?> <?php echo htmlspecialchars($page_title); ?>. All rights reserved.</span>
                     <br>
                     <span>
-                        Powered by <a href="https://quantumbytestudios.in?ref=FlatFileBlogs" style="border-bottom: 1px solid #000;" class="text-dark text-decoration-none">QuantumByte Studios</a>
+                        POWERED BY <a href="https://quantumbytestudios.in" style="border-bottom: 1px solid #000;" class="text-dark text-decoration-none">QUANTUM BYTE STUDIOS</a>
                     </span>
                     <br>
                     <span>

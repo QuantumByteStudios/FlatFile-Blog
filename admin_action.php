@@ -60,58 +60,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action'])) {
         exit;
     }
 
-	// Generate AI post content
-	if ($action === 'generate_ai_post') {
-		header('Content-Type: application/json');
-		// Avoid leaking PHP warnings/notices into JSON
-		if (function_exists('ob_get_level') && ob_get_level() > 0) {
-			ob_clean();
-		}
-		ini_set('display_errors', '0');
+    // Generate AI post content
+    if ($action === 'generate_ai_post') {
+        header('Content-Type: application/json');
+        // Avoid leaking PHP warnings/notices into JSON
+        if (function_exists('ob_get_level') && ob_get_level() > 0) {
+            ob_clean();
+        }
+        ini_set('display_errors', '0');
 
-		if (!extension_loaded('curl')) {
-			echo json_encode(['success' => false, 'error' => 'Server missing PHP cURL extension. Enable it in php.ini and restart Apache.']);
-			exit;
-		}
-		$topic = trim($_GET['topic'] ?? '');
-		if ($topic === '') {
-			echo json_encode(['success' => false, 'error' => 'Topic is required']);
-			exit;
-		}
+        if (!extension_loaded('curl')) {
+            echo json_encode(['success' => false, 'error' => 'Server missing PHP cURL extension. Enable it in php.ini and restart Apache.']);
+            exit;
+        }
+        $topic = trim($_GET['topic'] ?? '');
+        if ($topic === '') {
+            echo json_encode(['success' => false, 'error' => 'Topic is required']);
+            exit;
+        }
 
-		$settings = load_settings();
-		$businessInfo = trim($settings['business_info'] ?? '');
+        $settings = load_settings();
+        $businessInfo = trim($settings['business_info'] ?? '');
 
-		try {
-			$openaiKey = trim($settings['openai_api_key'] ?? '');
-			$openaiModel = trim($settings['openai_model'] ?? 'openai/gpt-4o-mini');
-			$openaiEndpoint = trim($settings['openai_endpoint'] ?? 'https://models.github.ai/inference');
-			if ($openaiKey === '') {
-				echo json_encode(['success' => false, 'error' => 'OpenAI token not configured. Add it in Settings.']);
-				exit;
-			}
-			$client = new OpenAIClient($openaiKey, $openaiModel, $openaiEndpoint);
-			$result = $client->generateBlogContent($topic, $businessInfo);
-		} catch (Throwable $e) {
-			echo json_encode(['success' => false, 'error' => 'Server error: ' . $e->getMessage()]);
-			exit;
-		}
-		if (!($result['success'] ?? false)) {
-			echo json_encode(['success' => false, 'error' => $result['error'] ?? 'AI generation failed']);
-			exit;
-		}
+        try {
+            $openaiKey = trim($settings['openai_api_key'] ?? '');
+            $openaiModel = trim($settings['openai_model'] ?? 'openai/gpt-4o-mini');
+            $openaiEndpoint = trim($settings['openai_endpoint'] ?? 'https://models.github.ai/inference');
+            if ($openaiKey === '') {
+                echo json_encode(['success' => false, 'error' => 'OpenAI token not configured. Add it in Settings.']);
+                exit;
+            }
+            $client = new OpenAIClient($openaiKey, $openaiModel, $openaiEndpoint);
+            $result = $client->generateBlogContent($topic, $businessInfo);
+        } catch (Throwable $e) {
+            echo json_encode(['success' => false, 'error' => 'Server error: ' . $e->getMessage()]);
+            exit;
+        }
+        if (!($result['success'] ?? false)) {
+            echo json_encode(['success' => false, 'error' => $result['error'] ?? 'AI generation failed']);
+            exit;
+        }
 
-			echo json_encode([
-				'success' => true,
-				'title' => $result['title'] ?? '',
-				'excerpt' => $result['excerpt'] ?? '',
-				'tags' => $result['tags'] ?? [],
-				'categories' => $result['categories'] ?? [],
-				'slug' => isset($result['title']) ? slugify($result['title']) : '',
-				'content_html' => $result['content_html'] ?? ''
-			]);
-		exit;
-	}
+        echo json_encode([
+            'success' => true,
+            'title' => $result['title'] ?? '',
+            'excerpt' => $result['excerpt'] ?? '',
+            'tags' => $result['tags'] ?? [],
+            'categories' => $result['categories'] ?? [],
+            'slug' => isset($result['title']) ? slugify($result['title']) : '',
+            'content_html' => $result['content_html'] ?? ''
+        ]);
+        exit;
+    }
 }
 
 // Verify CSRF token for POST requests
@@ -177,6 +177,27 @@ switch ($action) {
         }
         break;
 
+    case 'delete_install_file':
+        $install_path = __DIR__ . '/install.php';
+        if (!file_exists($install_path)) {
+            $error_message = 'install.php was not found.';
+            AdminLogger::log('install_delete_missing', []);
+            break;
+        }
+        if (!is_writable($install_path)) {
+            $error_message = 'install.php is not writable. Delete manually.';
+            AdminLogger::log('install_delete_not_writable', []);
+            break;
+        }
+        if (@unlink($install_path)) {
+            $success_message = 'install.php deleted successfully.';
+            AdminLogger::log('install_deleted', []);
+        } else {
+            $error_message = 'Failed to delete install.php. Check permissions.';
+            AdminLogger::log('install_delete_failed', []);
+        }
+        break;
+
     default:
         $error_message = 'Invalid action.';
         AdminLogger::log('invalid_action', [
@@ -236,7 +257,14 @@ function handle_create_post()
 
     $excerpt = trim($_POST['excerpt'] ?? '');
     $status = in_array($_POST['status'] ?? '', ['published', 'draft']) ? $_POST['status'] : 'published';
-    $date = $_POST['date'] ?? date('c');
+    // Date handling: accept datetime-local (YYYY-MM-DDTHH:MM) or ISO and convert to ISO8601
+    $date_input = trim($_POST['date'] ?? '');
+    $date_ts = $date_input !== '' ? strtotime($date_input) : time();
+    $date = date('c', $date_ts);
+    // Updated handling: allow override; default to publish date/time
+    $updated_input = trim($_POST['updated'] ?? '');
+    $updated_ts = $updated_input !== '' ? strtotime($updated_input) : $date_ts;
+    $updated = date('c', $updated_ts);
     $author = trim($_POST['author'] ?? 'Admin');
 
     // Parse tags and categories
@@ -272,7 +300,7 @@ function handle_create_post()
         'excerpt' => $excerpt,
         'status' => $status,
         'date' => $date,
-        'updated' => date('c'),
+        'updated' => $updated,
         'author' => $author,
         'tags' => $tags,
         'categories' => $categories,
@@ -360,7 +388,20 @@ function handle_update_post()
     $existing_post['excerpt'] = trim($_POST['excerpt'] ?? '');
     $existing_post['status'] = in_array($_POST['status'] ?? '', ['published', 'draft']) ? $_POST['status'] : $existing_post['status'];
     $existing_post['author'] = trim($_POST['author'] ?? $existing_post['author']);
-    $existing_post['updated'] = date('c');
+    // Optional date override
+    if (isset($_POST['date']) && trim($_POST['date']) !== '') {
+        $date_ts = strtotime(trim($_POST['date']));
+        if ($date_ts !== false) {
+            $existing_post['date'] = date('c', $date_ts);
+        }
+    }
+    // Updated time: allow override, else default to now
+    if (isset($_POST['updated']) && trim($_POST['updated']) !== '') {
+        $updated_ts = strtotime(trim($_POST['updated']));
+        $existing_post['updated'] = $updated_ts !== false ? date('c', $updated_ts) : date('c');
+    } else {
+        $existing_post['updated'] = date('c');
+    }
 
     // Store content based on type
     if ($content_type === 'html') {
