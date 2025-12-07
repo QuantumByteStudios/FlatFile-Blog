@@ -38,7 +38,7 @@ class OpenAIClient
 			return ['success' => false, 'error' => 'Empty OpenAI response'];
 		}
 
-		$parsed = $this->parseResponse($text);
+		$parsed = $this->parseResponse($text, $topic);
 		if (!$parsed) {
 			return ['success' => false, 'error' => 'Failed to parse OpenAI response'];
 		}
@@ -54,7 +54,7 @@ class OpenAIClient
 			"The blog must be SEO-friendly and highlight the benefits of the given topic for businesses.",
 			"Promote the client's company naturally to build credibility (do not overdo it).",
 			"Provide STRICT JSON only (no fences) with keys: title (string), excerpt (2-3 lines), tags (array of 3-8 short tags), categories (array of 1-4 categories), content_html (string).",
-			"content_html must be pure HTML using only <h1>, <h2>, <h3>, <p>. No <html>, <head>, <body>, CSS, or styling.",
+			"content_html must be pure HTML using only <b>, <i>, <u>, <br>. No <html>, <head>, <body>, CSS, or styling.",
 			"Do NOT repeat the title text within content_html.",
 			"Avoid em dashes, emojis, and unnecessary formatting.",
 			"Length: target ~1200-1800 words with clear structure and a short conclusion."
@@ -64,7 +64,8 @@ class OpenAIClient
 		}
 		$system = implode("\n- ", array_merge(["Follow these rules strictly:"], $rules));
 		return [
-			['role' => 'system', 'content' => $system]
+			['role' => 'system', 'content' => $system],
+			['role' => 'user', 'content' => "Topic: " . trim($topic)]
 		];
 	}
 
@@ -112,9 +113,14 @@ class OpenAIClient
 		return '';
 	}
 
-	private function parseResponse($text)
+	private function parseResponse($text, $topic = '')
 	{
 		$trimmed = trim($text);
+		// Strip common code fences if present
+		if (preg_match('/```(?:json)?\\s*([\\s\\S]*?)\\s*```/i', $trimmed, $m)) {
+			$trimmed = trim($m[1]);
+		}
+
 		$asJson = json_decode($trimmed, true);
 		if (is_array($asJson)) {
 			$title = trim((string)($asJson['title'] ?? ''));
@@ -130,6 +136,10 @@ class OpenAIClient
 			}
 			if (!is_array($categories)) $categories = [];
 			$contentHtml = (string)($asJson['content_html'] ?? '');
+			// Fallback: if title missing, derive from topic
+			if ($title === '' && $topic !== '') {
+				$title = $this->fallbackTitle($topic);
+			}
 			if ($title !== '' && $contentHtml !== '') {
 				return [
 					'title' => $title,
@@ -142,6 +152,17 @@ class OpenAIClient
 		}
 		return null;
 	}
+
+	private function fallbackTitle($topic)
+	{
+		$topic = trim($topic);
+		// Simple title-case fallback
+		$topic = preg_replace('/\\s+/', ' ', $topic);
+		$topic = ucwords($topic);
+		// Limit length sensibly
+		if (mb_strlen($topic) > 120) {
+			$topic = rtrim(mb_substr($topic, 0, 117)) . '...';
+		}
+		return $topic ?: 'Untitled';
+	}
 }
-
-
