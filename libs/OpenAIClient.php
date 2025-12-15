@@ -43,6 +43,11 @@ class OpenAIClient
 			return ['success' => false, 'error' => 'Failed to parse OpenAI response'];
 		}
 
+		// Clean and format the HTML content
+		if (isset($parsed['content_html'])) {
+			$parsed['content_html'] = $this->cleanHtmlContent($parsed['content_html']);
+		}
+
 		return ['success' => true] + $parsed;
 	}
 
@@ -54,7 +59,17 @@ class OpenAIClient
 			"The blog must be SEO-friendly and highlight the benefits of the given topic for businesses.",
 			"Promote the client's company naturally to build credibility (do not overdo it).",
 			"Provide STRICT JSON only (no fences) with keys: title (string), excerpt (2-3 lines), tags (array of 3-8 short tags), categories (array of 1-4 categories), content_html (string).",
-			"content_html must be pure HTML using only <b>, <i>, <u>, <br>. No <html>, <head>, <body>, CSS, or styling.",
+			"content_html must be pure semantic HTML. Use proper HTML structure:",
+			"  - Use <p> tags for paragraphs (NOT <br> tags for spacing)",
+			"  - Use <h2> for main section headings and <h3> for subsections",
+			"  - Use <b> for bold, <i> for italic, <u> for underline",
+			"  - Use <a href='url'> for links (email links: <a href='mailto:email'>)",
+			"  - Use <a href='tel:phone'> for phone numbers (make them clickable)",
+			"  - Use <ul> and <li> for lists when appropriate",
+			"  - NO <html>, <head>, <body>, <div>, CSS, or inline styling",
+			"  - NO excessive <br> tags - use <p> tags instead",
+			"  - Each paragraph should be wrapped in <p> tags",
+			"  - Structure content with proper headings and paragraphs for readability and SEO",
 			"Do NOT repeat the title text within content_html.",
 			"Avoid em dashes, emojis, and unnecessary formatting.",
 			"Length: target ~1200-1800 words with clear structure and a short conclusion."
@@ -164,5 +179,80 @@ class OpenAIClient
 			$topic = rtrim(mb_substr($topic, 0, 117)) . '...';
 		}
 		return $topic ?: 'Untitled';
+	}
+
+	private function cleanHtmlContent($html)
+	{
+		$html = trim($html);
+
+		// Remove any DOCTYPE, html, head, body tags if present
+		$html = preg_replace('/<!DOCTYPE[^>]*>/i', '', $html);
+		$html = preg_replace('/<html[^>]*>/i', '', $html);
+		$html = preg_replace('/<\/html>/i', '', $html);
+		$html = preg_replace('/<head[^>]*>.*?<\/head>/is', '', $html);
+		$html = preg_replace('/<body[^>]*>/i', '', $html);
+		$html = preg_replace('/<\/body>/i', '', $html);
+
+		// Fix phone numbers wrapped in <u> tags - make them clickable tel: links
+		$html = preg_replace_callback(
+			'/<u>([+\d\s\-()]{10,})<\/u>/i',
+			function ($matches) {
+				$phone = trim($matches[1]);
+				$phoneClean = preg_replace('/[^\d+]/', '', $phone);
+				if (strlen($phoneClean) >= 10) {
+					return '<a href="tel:' . htmlspecialchars($phoneClean) . '">' . htmlspecialchars($phone) . '</a>';
+				}
+				return $matches[0];
+			},
+			$html
+		);
+
+		// Check if content already has proper paragraph structure
+		$hasParagraphs = preg_match('/<p[^>]*>/i', $html);
+		$hasHeadings = preg_match('/<h[1-6][^>]*>/i', $html);
+
+		// Only process if content uses <br> tags excessively (not well-structured)
+		if (!$hasParagraphs && !$hasHeadings && preg_match('/<br\s*\/?>/i', $html)) {
+			// Convert <br> tags to proper paragraph structure
+			// Replace sequences of 2+ <br> tags with paragraph breaks
+			$html = preg_replace('/(<br\s*\/?>\s*){2,}/i', '</p><p>', $html);
+
+			// Split content by remaining <br> tags to identify paragraph boundaries
+			$parts = preg_split('/<br\s*\/?>/i', $html);
+			$result = [];
+
+			foreach ($parts as $part) {
+				$part = trim($part);
+				if (empty($part)) {
+					continue;
+				}
+
+				// Check if this part is already a block-level element
+				if (preg_match('/^<(h[1-6]|p|ul|ol|li)/i', $part)) {
+					// It's already a block element, add as-is
+					$result[] = $part;
+				} else {
+					// Wrap in paragraph tag
+					$result[] = '<p>' . $part . '</p>';
+				}
+			}
+
+			$html = implode("\n", $result);
+		}
+
+		// If content doesn't start with a block element, ensure it's wrapped
+		if (!preg_match('/^<(h[1-6]|p|ul|ol)/i', $html)) {
+			$html = '<p>' . $html . '</p>';
+		}
+
+		// Clean up empty paragraphs
+		$html = preg_replace('/<p>\s*<\/p>/i', '', $html);
+		$html = preg_replace('/<p>\s*<br\s*\/?>\s*<\/p>/i', '', $html);
+
+		// Normalize whitespace between tags
+		$html = preg_replace('/>\s+</', '><', $html);
+		$html = preg_replace('/\s{2,}/', ' ', $html);
+
+		return trim($html);
 	}
 }
