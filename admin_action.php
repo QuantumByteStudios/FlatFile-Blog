@@ -115,8 +115,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action'])) {
                 $openaiKey = getenv('OPENAI_API_KEY') ?: getenv('GITHUB_MODELS_TOKEN') ?: getenv('GITHUB_TOKEN') ?: '';
             }
             
+            // Clean the API key - remove any hidden characters
+            $openaiKey = preg_replace('/\s+/', '', $openaiKey);
+            
             if ($openaiKey === '') {
                 echo json_encode(['success' => false, 'error' => 'OpenAI API key not configured. Please add it in Settings > AI Settings, or set OPENAI_API_KEY environment variable.']);
+                exit;
+            }
+            
+            // Validate API key format (GitHub tokens are usually 40+ chars or start with ghp_)
+            if (strlen($openaiKey) < 20 && substr($openaiKey, 0, 4) !== 'ghp_') {
+                echo json_encode(['success' => false, 'error' => 'API key appears invalid (too short). GitHub tokens are usually 40+ characters or start with "ghp_".']);
                 exit;
             }
             
