@@ -22,13 +22,35 @@ try {
     error_log('Error loading functions.php: ' . $e->getMessage());
     die('System error. Please try again later.');
 }
-require_once __DIR__ . '/../libs/SecurityHardener.php';
-require_once __DIR__ . '/../libs/AdminLogger.php';
-require_once __DIR__ . '/tools/backup.php';
-require_once __DIR__ . '/../libs/SelfUpdater.php';
+
+// Load SecurityHardener if available
+$security_hardener_path = __DIR__ . '/../libs/SecurityHardener.php';
+if (file_exists($security_hardener_path)) {
+    require_once $security_hardener_path;
+}
+
+// Load AdminLogger if available
+$admin_logger_path = __DIR__ . '/../libs/AdminLogger.php';
+if (file_exists($admin_logger_path)) {
+    require_once $admin_logger_path;
+}
+
+// Load backup tools if available
+$backup_path = __DIR__ . '/tools/backup.php';
+if (file_exists($backup_path)) {
+    require_once $backup_path;
+}
+
+// Load SelfUpdater if available
+$self_updater_path = __DIR__ . '/../libs/SelfUpdater.php';
+if (file_exists($self_updater_path)) {
+    require_once $self_updater_path;
+}
 
 // Initialize security system
-SecurityHardener::init();
+if (class_exists('SecurityHardener')) {
+    SecurityHardener::init();
+}
 
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {

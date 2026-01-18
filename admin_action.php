@@ -6,14 +6,35 @@
  */
 
 require_once 'functions.php';
-require_once __DIR__ . '/libs/SecurityHardener.php';
-// Removed unused MonitoringSystem and GoogleAIClient
-require_once __DIR__ . '/libs/OpenAIClient.php';
+
+// Load SecurityHardener if available
+$security_hardener_path = __DIR__ . '/libs/SecurityHardener.php';
+if (file_exists($security_hardener_path)) {
+    require_once $security_hardener_path;
+}
+
+// Load OpenAIClient if available
+$openai_client_path = __DIR__ . '/libs/OpenAIClient.php';
+if (file_exists($openai_client_path)) {
+    require_once $openai_client_path;
+}
+
+// Load ImageUploader if available
+$image_uploader_path = __DIR__ . '/libs/ImageUploader.php';
+if (file_exists($image_uploader_path)) {
+    require_once $image_uploader_path;
+}
+
+// Load AdminLogger if available
+$admin_logger_path = __DIR__ . '/libs/AdminLogger.php';
+if (file_exists($admin_logger_path)) {
+    require_once $admin_logger_path;
+}
 
 // Initialize security system
-SecurityHardener::init();
-require_once 'libs/ImageUploader.php';
-require_once 'libs/AdminLogger.php';
+if (class_exists('SecurityHardener')) {
+    SecurityHardener::init();
+}
 
 // Start session
 session_start();
@@ -24,22 +45,24 @@ if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== tru
     die('Access denied. Please log in.');
 }
 
-// Security checks
-$ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-$username = $_SESSION['username'] ?? 'unknown';
+// Security checks (only if SecurityHardener is available)
+if (class_exists('SecurityHardener')) {
+    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    $username = $_SESSION['username'] ?? 'unknown';
 
-// Check brute force protection
-$brute_force_check = SecurityHardener::checkBruteForce($ip, $username);
-if ($brute_force_check['blocked']) {
-    http_response_code(429);
-    die(json_encode(['error' => $brute_force_check['message']]));
-}
+    // Check brute force protection
+    $brute_force_check = SecurityHardener::checkBruteForce($ip, $username);
+    if ($brute_force_check['blocked']) {
+        http_response_code(429);
+        die(json_encode(['error' => $brute_force_check['message']]));
+    }
 
-// Check rate limiting
-$rate_limit_check = SecurityHardener::checkRateLimit($ip);
-if ($rate_limit_check['blocked']) {
-    http_response_code(429);
-    die(json_encode(['error' => $rate_limit_check['message']]));
+    // Check rate limiting
+    $rate_limit_check = SecurityHardener::checkRateLimit($ip);
+    if ($rate_limit_check['blocked']) {
+        http_response_code(429);
+        die(json_encode(['error' => $rate_limit_check['message']]));
+    }
 }
 
 // Handle GET requests for AJAX

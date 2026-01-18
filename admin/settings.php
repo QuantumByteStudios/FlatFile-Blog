@@ -22,8 +22,18 @@ try {
     error_log('Error loading functions.php: ' . $e->getMessage());
     die('System error. Please try again later.');
 }
-require_once __DIR__ . '/../libs/SecurityHardener.php';
-require_once __DIR__ . '/../libs/SelfUpdater.php';
+
+// Load SecurityHardener if available
+$security_hardener_path = __DIR__ . '/../libs/SecurityHardener.php';
+if (file_exists($security_hardener_path)) {
+    require_once $security_hardener_path;
+}
+
+// Load SelfUpdater if available
+$self_updater_path = __DIR__ . '/../libs/SelfUpdater.php';
+if (file_exists($self_updater_path)) {
+    require_once $self_updater_path;
+}
 
 // Ensure config constants are available when static analysis runs this file standalone
 if (!defined('CONTENT_DIR') || !defined('BASE_URL') || !defined('SITE_TITLE')) {
@@ -43,7 +53,9 @@ if (!defined('CONTENT_DIR') || !defined('BASE_URL') || !defined('SITE_TITLE')) {
 }
 
 // Initialize security system
-SecurityHardener::init();
+if (class_exists('SecurityHardener')) {
+    SecurityHardener::init();
+}
 
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
