@@ -109,10 +109,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action'])) {
             $openaiKey = trim($settings['openai_api_key'] ?? '');
             $openaiModel = trim($settings['openai_model'] ?? 'openai/gpt-4o-mini');
             $openaiEndpoint = trim($settings['openai_endpoint'] ?? 'https://models.github.ai/inference');
+            
+            // Check for API key from environment variables as fallback
             if ($openaiKey === '') {
-                echo json_encode(['success' => false, 'error' => 'OpenAI token not configured. Add it in Settings.']);
+                $openaiKey = getenv('OPENAI_API_KEY') ?: getenv('GITHUB_MODELS_TOKEN') ?: getenv('GITHUB_TOKEN') ?: '';
+            }
+            
+            if ($openaiKey === '') {
+                echo json_encode(['success' => false, 'error' => 'OpenAI API key not configured. Please add it in Settings > AI Settings, or set OPENAI_API_KEY environment variable.']);
                 exit;
             }
+            
             $client = new OpenAIClient($openaiKey, $openaiModel, $openaiEndpoint);
             $result = $client->generateBlogContent($topic, $businessInfo);
         } catch (Throwable $e) {
@@ -120,7 +127,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action'])) {
             exit;
         }
         if (!($result['success'] ?? false)) {
-            echo json_encode(['success' => false, 'error' => $result['error'] ?? 'AI generation failed']);
+            $errorMsg = $result['error'] ?? 'AI generation failed';
+            // Provide more helpful error messages
+            if (strpos($errorMsg, '401') !== false || strpos($errorMsg, 'Unauthorized') !== false) {
+                $errorMsg = 'Invalid API key. Please check your OpenAI API key in Settings > AI Settings and ensure it is correct.';
+            }
+            echo json_encode(['success' => false, 'error' => $errorMsg]);
             exit;
         }
 
