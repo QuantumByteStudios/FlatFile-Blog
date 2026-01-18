@@ -24,6 +24,7 @@ try {
 
 // Load settings for footer/contact info
 $settings = load_settings();
+$site_title = $settings['site_title'] ?? SITE_TITLE ?? 'FlatFile Blog';
 
 // Get post slug from URL
 $slug = isset($_GET['slug']) ? trim($_GET['slug']) : '';

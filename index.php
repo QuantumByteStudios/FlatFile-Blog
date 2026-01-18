@@ -111,9 +111,9 @@ $site_description = $settings['site_description'] ?? 'A simple, fast, and secure
                                         <?php if (!empty($post['tags'])): ?>
                                             <div class="blog-card-tags">
                                                 <?php foreach (array_slice($post['tags'], 0, 4) as $post_tag): ?>
-                                                    <a href="<?php echo BASE_URL; ?>search?tag=<?php echo urlencode($post_tag); ?>" class="blog-card-tag">
+                                                    <span class="blog-card-tag">
                                                         <?php echo htmlspecialchars($post_tag); ?>
-                                                    </a>
+                                                    </span>
                                                 <?php endforeach; ?>
                                                 <?php if (count($post['tags']) > 4): ?>
                                                     <span class="blog-card-tag-more">

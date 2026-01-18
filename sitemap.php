@@ -28,14 +28,6 @@ echo '<?xml version="1.0" encoding="UTF-8"?>';
         <priority>1.0</priority>
     </url>
 
-    <!-- Search page -->
-    <url>
-        <loc><?php echo BASE_URL; ?>search</loc>
-        <lastmod><?php echo date('c'); ?></lastmod>
-        <changefreq>weekly</changefreq>
-        <priority>0.8</priority>
-    </url>
-
     <!-- Archive page -->
     <url>
         <loc><?php echo BASE_URL; ?>archive</loc>

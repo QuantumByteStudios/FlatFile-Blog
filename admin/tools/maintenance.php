@@ -28,18 +28,6 @@ class MaintenanceTools
     }
 
     /**
-     * Rebuild search index
-     */
-    public static function rebuildIndex()
-    {
-        $result = rebuild_index();
-        return [
-            'success' => $result,
-            'message' => $result ? 'Index rebuilt successfully' : 'Failed to rebuild index'
-        ];
-    }
-
-    /**
      * Clean up orphaned files
      */
     public static function cleanOrphanedFiles()
@@ -225,10 +213,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $result = MaintenanceTools::cleanLogs($days);
             break;
 
-        case 'rebuild_index':
-            $result = MaintenanceTools::rebuildIndex();
-            break;
-
         case 'clean_orphaned':
             $result = MaintenanceTools::cleanOrphanedFiles();
             break;
@@ -314,9 +298,6 @@ $recent_logs = AdminLogger::getRecentLogs(10);
                             </div>
                             <div class="card-body">
                                 <div class="d-grid gap-2">
-                                    <button class="btn btn-outline-primary" onclick="runMaintenance('rebuild_index')">
-                                        <i class="bi bi-arrow-clockwise"></i> Rebuild Index
-                                    </button>
                                     <button class="btn btn-outline-warning" onclick="runMaintenance('clean_orphaned')">
                                         <i class="bi bi-trash"></i> Clean Orphaned Files
                                     </button>

@@ -343,24 +343,6 @@ $last_update_time = $ui_settings['last_update_time'] ?? null;
                                 </form>
                             </div>
 
-                            <!-- Rebuild Index -->
-                            <div class="mb-4 pb-4 border-bottom">
-                                <form method="POST">
-                                    <input type="hidden" name="action" value="rebuild_index">
-                                    <input type="hidden" name="csrf_token"
-                                        value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
-                                    <div class="d-flex align-items-center mb-2">
-                                        <i class="bi bi-arrow-clockwise text-dark me-2"></i>
-                                        <strong class="fw-medium">Rebuild Search Index</strong>
-                                    </div>
-                                    <p class="text-muted small mb-3">Regenerate the content index for faster searches
-                                    </p>
-                                    <button type="submit" class="btn btn-dark btn-sm">
-                                        <i class="bi bi-arrow-clockwise me-2"></i>Rebuild Index
-                                    </button>
-                                </form>
-                            </div>
-
                             <!-- Clean Cache -->
                             <div class="mb-4">
                                 <form method="POST">
