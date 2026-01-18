@@ -319,7 +319,7 @@ $canonical_url = BASE_URL . urlencode($post['slug']);
 		<div class="container">
 			<div class="row">
 				<div class="col-12">
-					<span>&copy; <?php echo date('Y'); ?> <?php echo htmlspecialchars($page_title); ?>. All rights
+					<span>&copy; <?php echo date('Y'); ?> <?php echo htmlspecialchars($site_title); ?>. All rights
 						reserved.</span>
 					<br>
 					<span>
