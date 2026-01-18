@@ -259,151 +259,140 @@ $repoConfigured = $displayRepo !== '';
                         </div>
                     <?php endif; ?>
 
-                    <!-- Tools (compact 3-column layout) -->
+                    <!-- Tools (flat 3-column layout) -->
                     <div class="row g-4">
                         <!-- Self-Updater -->
                         <div class="col-lg-4">
-                            <div class="card">
-                                <div class="card-header"
-                                    style="background: linear-gradient(135deg, #000 0%, #333 100%); color: white; border: none;">
-                                    <h5 class="mb-0">
-                                        <i class="bi bi-cloud-arrow-down me-2"></i>Self-Updater
-                                    </h5>
+                            <div class="border-bottom pb-3 mb-4">
+                                <h5 class="mb-0 fw-semibold">
+                                    <i class="bi bi-cloud-arrow-down me-2 text-dark"></i>Self-Updater
+                                </h5>
+                            </div>
+
+                            <div class="mb-3 small text-muted">
+                                <div class="mb-2">
+                                    <strong class="text-dark">Repo:</strong>
+                                    <?php if (!empty($repoUrl)): ?>
+                                        <a href="<?php echo htmlspecialchars($repoUrl); ?>" target="_blank"
+                                            rel="noopener noreferrer" class="text-decoration-none">
+                                            <code class="text-primary"><?php echo htmlspecialchars($displayRepo); ?></code>
+                                        </a>
+                                    <?php else: ?>
+                                        <code><?php echo htmlspecialchars($displayRepo ?: 'Not configured'); ?></code>
+                                    <?php endif; ?>
                                 </div>
-                                <div class="card-body">
-                                    <div class="mb-2 small text-muted">
-                                        Repo: <?php if (!empty($repoUrl)): ?>
-                                            <a href="<?php echo htmlspecialchars($repoUrl); ?>" target="_blank"
-                                                rel="noopener noreferrer">
-                                                <code><?php echo htmlspecialchars($displayRepo); ?></code>
-                                            </a>
-                                        <?php else: ?>
-                                            <code><?php echo htmlspecialchars($displayRepo ?: 'Not configured'); ?></code>
-                                        <?php endif; ?>
-                                    </div>
-                                    <div class="mb-2 small text-muted">
-                                        Access: <span
-                                            class="badge bg-<?php echo $tokenSet ? 'success' : 'info'; ?>"><?php echo $tokenSet ? 'Private repo access (token set)' : 'Public repo (no token needed)'; ?></span>
-                                    </div>
-                                    <form method="POST" class="mt-3">
-                                        <input type="hidden" name="action" value="run_updater">
-                                        <input type="hidden" name="csrf_token"
-                                            value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
-                                        <button type="submit" class="btn btn-dark btn-sm w-100">
-                                            <i class="bi bi-cloud-arrow-down"></i> Update Now
-                                        </button>
-                                    </form>
-                                    <a href="<?php echo BASE_URL; ?>admin/settings#"
-                                        class="btn btn-outline-dark btn-sm w-100 mt-2">
-                                        <i class="bi bi-gear"></i> Configure
-                                    </a>
-                                    <div class="form-text mt-2">Pulls latest code from GitHub. Content, uploads, logs,
-                                        and config are preserved.</div>
+                                <div>
+                                    <strong class="text-dark">Access:</strong>
+                                    <span class="badge bg-<?php echo $tokenSet ? 'success' : 'info'; ?>">
+                                        <?php echo $tokenSet ? 'Private repo access (token set)' : 'Public repo (no token needed)'; ?>
+                                    </span>
                                 </div>
                             </div>
+
+                            <form method="POST" class="mb-3">
+                                <input type="hidden" name="action" value="run_updater">
+                                <input type="hidden" name="csrf_token"
+                                    value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
+                                <button type="submit" class="btn btn-dark w-100">
+                                    <i class="bi bi-cloud-arrow-down me-2"></i>Update Now
+                                </button>
+                            </form>
+
+                            <a href="<?php echo BASE_URL; ?>admin/settings#" class="btn btn-outline-dark w-100 mb-3">
+                                <i class="bi bi-gear me-2"></i>Configure
+                            </a>
+
+                            <p class="text-muted small mb-0">Pulls latest code from GitHub. Content, uploads, logs, and
+                                config are preserved.</p>
                         </div>
 
                         <!-- Maintenance -->
                         <div class="col-lg-4">
-                            <div class="card">
-                                <div class="card-header"
-                                    style="background: linear-gradient(135deg, #000 0%, #333 100%); color: white; border: none;">
-                                    <h5 class="mb-0">
-                                        <i class="bi bi-tools me-2"></i>System Maintenance
-                                    </h5>
-                                </div>
-                                <div class="card-body">
-                                    <!-- Clean Logs -->
-                                    <form method="POST" class="mb-3">
-                                        <input type="hidden" name="action" value="clean_logs">
-                                        <input type="hidden" name="csrf_token"
-                                            value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
-                                        <div class="d-flex align-items-center mb-2">
-                                            <i class="bi bi-trash text-warning me-2"></i>
-                                            <strong>Clean Old Logs</strong>
-                                        </div>
-                                        <div class="row">
-                                            <div class="col-8">
-                                                <select name="days" class="form-select form-select-sm">
-                                                    <option value="30">30 days</option>
-                                                    <option value="60">60 days</option>
-                                                    <option value="90" selected>90 days</option>
-                                                    <option value="180">180 days</option>
-                                                </select>
-                                            </div>
-                                            <div class="col-4">
-                                                <button type="submit" class="btn btn-dark btn-sm w-100">
-                                                    <i class="bi bi-trash"></i> Clean
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </form>
-
-                                    <!-- Rebuild Index -->
-                                    <form method="POST" class="mb-3">
-                                        <input type="hidden" name="action" value="rebuild_index">
-                                        <input type="hidden" name="csrf_token"
-                                            value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
-                                        <div class="d-flex align-items-center mb-2">
-                                            <i class="bi bi-arrow-clockwise text-info me-2"></i>
-                                            <strong>Rebuild Search Index</strong>
-                                        </div>
-                                        <p class="text-muted small mb-2">Regenerate the content index for faster
-                                            searches</p>
-                                        <button type="submit" class="btn btn-dark btn-sm">
-                                            <i class="bi bi-arrow-clockwise"></i> Rebuild Index
-                                        </button>
-                                    </form>
-
-                                    <!-- Clean Cache -->
-                                    <form method="POST" class="mb-3">
-                                        <input type="hidden" name="action" value="clean_cache">
-                                        <input type="hidden" name="csrf_token"
-                                            value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
-                                        <div class="d-flex align-items-center mb-2">
-                                            <i class="bi bi-broom text-secondary me-2"></i>
-                                            <strong>Clean Cache</strong>
-                                        </div>
-                                        <p class="text-muted small mb-2">Clear all cached files and temporary data</p>
-                                        <button type="submit" class="btn btn-dark btn-sm">
-                                            <i class="bi bi-broom"></i> Clean Cache
-                                        </button>
-                                    </form>
-
-                                    <!-- Simplified: only essential maintenance actions below -->
-                                </div>
+                            <div class="border-bottom pb-3 mb-4">
+                                <h5 class="mb-0 fw-semibold">
+                                    <i class="bi bi-tools me-2 text-dark"></i>System Maintenance
+                                </h5>
                             </div>
+
+                            <!-- Clean Logs -->
+                            <form method="POST" class="mb-4">
+                                <input type="hidden" name="action" value="clean_logs">
+                                <input type="hidden" name="csrf_token"
+                                    value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="bi bi-trash text-dark me-2"></i>
+                                    <strong class="fw-medium">Clean Old Logs</strong>
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-8">
+                                        <select name="days" class="form-select form-select-sm">
+                                            <option value="30">30 days</option>
+                                            <option value="60">60 days</option>
+                                            <option value="90" selected>90 days</option>
+                                            <option value="180">180 days</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-4">
+                                        <button type="submit" class="btn btn-dark btn-sm w-100">
+                                            <i class="bi bi-trash"></i> Clean
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+
+                            <!-- Rebuild Index -->
+                            <form method="POST" class="mb-4">
+                                <input type="hidden" name="action" value="rebuild_index">
+                                <input type="hidden" name="csrf_token"
+                                    value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="bi bi-arrow-clockwise text-dark me-2"></i>
+                                    <strong class="fw-medium">Rebuild Search Index</strong>
+                                </div>
+                                <p class="text-muted small mb-2">Regenerate the content index for faster searches</p>
+                                <button type="submit" class="btn btn-dark btn-sm">
+                                    <i class="bi bi-arrow-clockwise me-2"></i>Rebuild Index
+                                </button>
+                            </form>
+
+                            <!-- Clean Cache -->
+                            <form method="POST" class="mb-4">
+                                <input type="hidden" name="action" value="clean_cache">
+                                <input type="hidden" name="csrf_token"
+                                    value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="bi bi-broom text-dark me-2"></i>
+                                    <strong class="fw-medium">Clean Cache</strong>
+                                </div>
+                                <p class="text-muted small mb-2">Clear all cached files and temporary data</p>
+                                <button type="submit" class="btn btn-dark btn-sm">
+                                    <i class="bi bi-broom me-2"></i>Clean Cache
+                                </button>
+                            </form>
                         </div>
 
                         <!-- Backup -->
                         <div class="col-lg-4">
-                            <div class="card">
-                                <div class="card-header"
-                                    style="background: linear-gradient(135deg, #000 0%, #333 100%); color: white; border: none;">
-                                    <h5 class="mb-0">
-                                        <i class="bi bi-shield-check me-2"></i>Backup & Security
-                                    </h5>
-                                </div>
-                                <div class="card-body">
-                                    <!-- Create Backup -->
-                                    <form method="POST" class="mb-3">
-                                        <input type="hidden" name="action" value="create_backup">
-                                        <input type="hidden" name="csrf_token"
-                                            value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
-                                        <div class="d-flex align-items-center mb-2">
-                                            <i class="bi bi-archive text-success me-2"></i>
-                                            <strong>Create Backup</strong>
-                                        </div>
-                                        <p class="text-muted small mb-2">Create a full backup of all content and uploads
-                                        </p>
-                                        <button type="submit" class="btn btn-dark btn-sm">
-                                            <i class="bi bi-archive"></i> Create Backup
-                                        </button>
-                                    </form>
-
-                                    <!-- System Health removed to keep tools minimal -->
-                                </div>
+                            <div class="border-bottom pb-3 mb-4">
+                                <h5 class="mb-0 fw-semibold">
+                                    <i class="bi bi-shield-check me-2 text-dark"></i>Backup & Security
+                                </h5>
                             </div>
+
+                            <!-- Create Backup -->
+                            <form method="POST" class="mb-4">
+                                <input type="hidden" name="action" value="create_backup">
+                                <input type="hidden" name="csrf_token"
+                                    value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="bi bi-archive text-dark me-2"></i>
+                                    <strong class="fw-medium">Create Backup</strong>
+                                </div>
+                                <p class="text-muted small mb-2">Create a full backup of all content and uploads</p>
+                                <button type="submit" class="btn btn-dark btn-sm">
+                                    <i class="bi bi-archive me-2"></i>Create Backup
+                                </button>
+                            </form>
                         </div>
                     </div>
 

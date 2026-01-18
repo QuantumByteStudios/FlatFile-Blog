@@ -90,11 +90,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
             $openai_model = trim($_POST['openai_model'] ?? ($existing_settings['openai_model'] ?? 'openai/gpt-4o-mini'));
             $openai_endpoint = trim($_POST['openai_endpoint'] ?? ($existing_settings['openai_endpoint'] ?? 'https://models.github.ai/inference'));
-            $updater_repo = trim($_POST['updater_repo'] ?? ($existing_settings['updater_repo'] ?? ''));
-            $updater_branch = trim($_POST['updater_branch'] ?? ($existing_settings['updater_branch'] ?? 'main'));
-            $updater_token = trim($_POST['updater_token'] ?? ($existing_settings['updater_token'] ?? ''));
-            $updater_url = trim($_POST['updater_url'] ?? ($existing_settings['updater_url'] ?? ''));
-            $updater_checksum = trim($_POST['updater_checksum'] ?? ($existing_settings['updater_checksum'] ?? ''));
+            // Preserve updater settings from existing settings (not editable here anymore)
+            $updater_repo = $existing_settings['updater_repo'] ?? '';
+            $updater_branch = $existing_settings['updater_branch'] ?? 'main';
+            $updater_token = $existing_settings['updater_token'] ?? '';
+            $updater_url = $existing_settings['updater_url'] ?? '';
+            $updater_checksum = $existing_settings['updater_checksum'] ?? '';
 
             // Merge updated settings
             $settings = array_merge($existing_settings, [
@@ -132,49 +133,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 } else {
                     $error_message = "Failed to save settings. Check file permissions.";
                 }
-            }
-        }
-    } elseif ($_POST['action'] === 'run_updater') {
-        // Verify CSRF token
-        if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
-            $error_message = "Invalid CSRF token.";
-        } else {
-            $s = load_settings();
-            $repo = trim($s['updater_repo'] ?? '');
-            $branch = trim($s['updater_branch'] ?? 'main');
-            $token = trim($s['updater_token'] ?? '');
-            if ($repo === '') {
-                $error_message = 'Updater repository not configured in Settings.';
-            } else {
-                if ($token === '') {
-                    $res = SelfUpdater::updateFromPublicRepo($repo, $branch);
-                } else {
-                    $res = SelfUpdater::updateFromGitHub($repo, $branch, $token);
-                }
-                // Ensure install.php is removed post-update regardless of path
-                $extraLogs = [];
-                $installPath = dirname(__DIR__) . '/install.php';
-                if (file_exists($installPath)) {
-                    $rmOk = @unlink($installPath);
-                    $extraLogs[] = ['step' => 'post', 'action' => 'remove install.php (controller)', 'ok' => $rmOk];
-                }
-
-                // Redirect with updater debug info in query so console script can print it
-                $logsParam = '';
-                if (!empty($res['logs']) || !empty($extraLogs)) {
-                    $allLogs = !empty($res['logs']) ? array_merge($res['logs'], $extraLogs) : $extraLogs;
-                    $logsParam = '&updater_logs=' . rawurlencode(json_encode($allLogs));
-                }
-                $modeParam = !empty($res['mode']) ? ('&updater_mode=' . rawurlencode($res['mode'])) : '';
-                $msgParam = '&updater_msg=' . rawurlencode($res['message'] ?? ($res['error'] ?? ''));
-                $target = BASE_URL . 'admin/settings?';
-                if (!empty($res['success'])) {
-                    $target .= 'success=' . rawurlencode($res['message'] ?? 'Updated successfully.') . $modeParam . $logsParam . $msgParam;
-                } else {
-                    $target .= 'error=' . rawurlencode($res['error'] ?? 'Update failed.') . $modeParam . $logsParam . $msgParam;
-                }
-                header('Location: ' . $target);
-                exit;
             }
         }
     }
@@ -316,172 +274,105 @@ function update_config_site_title($new_title)
                                 <input type="hidden" name="csrf_token"
                                     value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
 
-                                <div class="row">
-                                    <div class="col-lg-12">
-                                        <!-- Blog Information -->
-                                        <div class="card mb-4">
-                                            <div class="card-body">
-                                                <!-- Provider selection removed: Only OpenAI (GitHub Models) supported -->
-                                                <div class="mb-3">
-                                                    <label for="site_title" class="form-label">Site Title *</label>
-                                                    <input type="text" class="form-control" id="site_title"
-                                                        name="site_title"
-                                                        value="<?php echo htmlspecialchars($settings['site_title'] ?? '', ENT_QUOTES, 'UTF-8'); ?>"
-                                                        required maxlength="255">
-                                                </div>
-
-                                                <div class="mb-3">
-                                                    <label for="site_description" class="form-label">Site
-                                                        Description</label>
-                                                    <textarea class="form-control" id="site_description"
-                                                        name="site_description" rows="3"
-                                                        placeholder="Brief description of your blog"><?php echo htmlspecialchars($settings['site_description']); ?></textarea>
-                                                </div>
-
-                                                <div class="mb-3">
-                                                    <label for="admin_email" class="form-label">Admin Email</label>
-                                                    <input type="email" class="form-control" id="admin_email"
-                                                        name="admin_email"
-                                                        value="<?php echo htmlspecialchars($settings['admin_email'] ?? '', ENT_QUOTES, 'UTF-8'); ?>"
-                                                        maxlength="255">
-                                                </div>
-
-                                                <div class="mb-3">
-                                                    <label for="posts_per_page" class="form-label">Posts Per
-                                                        Page</label>
-                                                    <input type="number" class="form-control" id="posts_per_page"
-                                                        name="posts_per_page"
-                                                        value="<?php echo $settings['posts_per_page']; ?>" min="1"
-                                                        max="50">
-                                                </div>
-
-
-                                            </div>
+                                <div class="row g-4">
+                                    <!-- Basic Settings -->
+                                    <div class="col-lg-6">
+                                        <div class="border-bottom pb-3 mb-4">
+                                            <h5 class="mb-0 fw-semibold">
+                                                <i class="bi bi-info-circle me-2 text-dark"></i>Basic Settings
+                                            </h5>
                                         </div>
 
-                                        <!-- AI Settings (OpenAI only) -->
-                                        <div class="card mb-4">
-                                            <div class="card-header">
-                                                <h5 class="mb-0">
-                                                    AI Settings
-                                                </h5>
-                                            </div>
-                                            <div class="card-body">
-                                                <div class="mb-3">
-                                                    <label for="openai_api_key" class="form-label">GitHub Models
-                                                        Token</label>
-                                                    <input type="text" class="form-control" id="openai_api_key"
-                                                        name="openai_api_key"
-                                                        value="<?php echo htmlspecialchars($settings['openai_api_key']); ?>"
-                                                        placeholder="Paste GitHub token">
-                                                    <div class="form-text">Saved server-side.</div>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label for="openai_model" class="form-label">OpenAI Model</label>
-                                                    <input type="text" class="form-control" id="openai_model"
-                                                        name="openai_model"
-                                                        value="<?php echo htmlspecialchars($settings['openai_model']); ?>">
-                                                    <div class="form-text">Examples: openai/gpt-4o-mini (low cost),
-                                                        openai/gpt-4o</div>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label for="openai_endpoint" class="form-label">OpenAI
-                                                        Endpoint</label>
-                                                    <input type="text" class="form-control" id="openai_endpoint"
-                                                        name="openai_endpoint"
-                                                        value="<?php echo htmlspecialchars($settings['openai_endpoint']); ?>">
-                                                    <div class="form-text">Default: https://models.github.ai/inference
-                                                    </div>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label for="business_info" class="form-label">Business
-                                                        Information</label>
-                                                    <textarea class="form-control" id="business_info"
-                                                        name="business_info" rows="4"
-                                                        placeholder="Describe your business, audience, offerings, tone, location, etc."><?php echo htmlspecialchars($settings['business_info']); ?></textarea>
-                                                    <div class="form-text">Used to personalize AI-generated posts.</div>
-                                                </div>
-                                            </div>
+                                        <div class="mb-4">
+                                            <label for="site_title" class="form-label fw-medium">Site Title *</label>
+                                            <input type="text" class="form-control" id="site_title" name="site_title"
+                                                value="<?php echo htmlspecialchars($settings['site_title'] ?? '', ENT_QUOTES, 'UTF-8'); ?>"
+                                                required maxlength="255">
                                         </div>
 
-                                        <!-- Self-Updater -->
-                                        <div class="card mb-4">
-                                            <div class="card-header">
-                                                <h5 class="mb-0">
-                                                    Self-Updater
-                                                </h5>
-                                            </div>
-                                            <div class="card-body">
-                                                <div class="row g-3 align-items-end">
-                                                    <div class="col-md-6">
-                                                        <label for="updater_repo" class="form-label">GitHub Repository
-                                                            (owner/repo or full URL)</label>
-                                                        <input type="text" class="form-control" id="updater_repo"
-                                                            name="updater_repo"
-                                                            value="<?php echo htmlspecialchars($settings['updater_repo']); ?>"
-                                                            placeholder="https://github.com/QuantumByteStudios/FlatFile-Blog">
-                                                        <div class="form-text">You can enter <code>owner/repo</code> or
-                                                            the full GitHub URL. The default is this repo.</div>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <label for="updater_token" class="form-label">GitHub
-                                                            Token</label>
-                                                        <input type="text" class="form-control" id="updater_token"
-                                                            name="updater_token"
-                                                            value="<?php echo htmlspecialchars($settings['updater_token']); ?>"
-                                                            placeholder="Required for private repos">
-                                                        <div class="form-text">Saved server-side; shown here if
-                                                            previously set.</div>
-                                                    </div>
-                                                </div>
-                                                <div class="mt-3 small text-muted">
-                                                    Updates pull the latest code from the repository's default branch
-                                                    (usually <code>main</code>). User content and
-                                                    <code>config.php</code> are preserved.
-                                                </div>
-                                                <div class="mt-3 d-flex justify-content-end">
-                                                    <button type="submit" name="action" value="run_updater"
-                                                        class="btn btn-outline-dark">
-                                                        <i class="bi bi-cloud-arrow-down"></i> Update Now
-                                                    </button>
-                                                </div>
-                                                <script>
-                                                    // Log updater debug info from URL params if present
-                                                    (function () {
-                                                        try {
-                                                            var params = new URLSearchParams(window.location.search);
-                                                            var ulogs = params.get('updater_logs');
-                                                            var umsg = params.get('updater_msg');
-                                                            var umode = params.get('updater_mode');
-                                                            if (umsg) console.log('[Updater]', decodeURIComponent(umsg));
-                                                            if (umode) console.log('[Updater] mode:', umode);
-                                                            if (ulogs) {
-                                                                try {
-                                                                    var logs = JSON.parse(decodeURIComponent(ulogs));
-                                                                    console.group('[Updater] logs');
-                                                                    logs.forEach(function (entry, idx) {
-                                                                        console.log('#' + (idx + 1), entry);
-                                                                    });
-                                                                    console.groupEnd();
-                                                                } catch (e) {
-                                                                    console.warn('[Updater] Failed to parse logs:', e);
-                                                                }
-                                                            }
-                                                        } catch (e) { }
-                                                    })();
-                                                </script>
-                                            </div>
+                                        <div class="mb-4">
+                                            <label for="site_description" class="form-label fw-medium">Site
+                                                Description</label>
+                                            <textarea class="form-control" id="site_description" name="site_description"
+                                                rows="3"
+                                                placeholder="Brief description of your blog"><?php echo htmlspecialchars($settings['site_description']); ?></textarea>
                                         </div>
 
-                                        <div class="d-grid">
-                                            <button type="submit" class="btn btn-primary">
-                                                <i class="bi bi-check-circle"></i> Save Settings
+                                        <div class="mb-4">
+                                            <label for="admin_email" class="form-label fw-medium">Admin Email</label>
+                                            <input type="email" class="form-control" id="admin_email" name="admin_email"
+                                                value="<?php echo htmlspecialchars($settings['admin_email'] ?? '', ENT_QUOTES, 'UTF-8'); ?>"
+                                                maxlength="255">
+                                        </div>
+
+                                        <div class="mb-4">
+                                            <label for="posts_per_page" class="form-label fw-medium">Posts Per
+                                                Page</label>
+                                            <input type="number" class="form-control" id="posts_per_page"
+                                                name="posts_per_page" value="<?php echo $settings['posts_per_page']; ?>"
+                                                min="1" max="50">
+                                        </div>
+                                    </div>
+
+                                    <!-- AI Settings -->
+                                    <div class="col-lg-6">
+                                        <div class="border-bottom pb-3 mb-4">
+                                            <h5 class="mb-0 fw-semibold">
+                                                <i class="bi bi-stars me-2 text-dark"></i>AI Settings
+                                            </h5>
+                                        </div>
+
+                                        <div class="mb-4">
+                                            <label for="openai_api_key" class="form-label fw-medium">GitHub Models
+                                                Token</label>
+                                            <input type="text" class="form-control" id="openai_api_key"
+                                                name="openai_api_key"
+                                                value="<?php echo htmlspecialchars($settings['openai_api_key']); ?>"
+                                                placeholder="Paste GitHub token">
+                                            <div class="form-text text-muted small mt-1">Saved server-side.</div>
+                                        </div>
+
+                                        <div class="mb-4">
+                                            <label for="openai_model" class="form-label fw-medium">OpenAI Model</label>
+                                            <input type="text" class="form-control" id="openai_model"
+                                                name="openai_model"
+                                                value="<?php echo htmlspecialchars($settings['openai_model']); ?>">
+                                            <div class="form-text text-muted small mt-1">Examples: openai/gpt-4o-mini
+                                                (low cost), openai/gpt-4o</div>
+                                        </div>
+
+                                        <div class="mb-4">
+                                            <label for="openai_endpoint" class="form-label fw-medium">OpenAI
+                                                Endpoint</label>
+                                            <input type="text" class="form-control" id="openai_endpoint"
+                                                name="openai_endpoint"
+                                                value="<?php echo htmlspecialchars($settings['openai_endpoint']); ?>">
+                                            <div class="form-text text-muted small mt-1">Default:
+                                                https://models.github.ai/inference</div>
+                                        </div>
+
+                                        <div class="mb-4">
+                                            <label for="business_info" class="form-label fw-medium">Business
+                                                Information</label>
+                                            <textarea class="form-control" id="business_info" name="business_info"
+                                                rows="4"
+                                                placeholder="Describe your business, audience, offerings, tone, location, etc."><?php echo htmlspecialchars($settings['business_info']); ?></textarea>
+                                            <div class="form-text text-muted small mt-1">Used to personalize
+                                                AI-generated posts.</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row mt-4">
+                                    <div class="col-12">
+                                        <div class="border-top pt-4">
+                                            <button type="submit" class="btn btn-primary px-5">
+                                                <i class="bi bi-check-circle me-2"></i>Save Settings
                                             </button>
                                         </div>
                                     </div>
                                 </div>
                             </form>
-                            <!-- No provider toggle needed -->
                         </div>
                     </div>
                 </div>
