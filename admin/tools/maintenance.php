@@ -320,7 +320,8 @@ $recent_logs = AdminLogger::getRecentLogs(10);
                                     <button class="btn btn-outline-warning" onclick="runMaintenance('clean_orphaned')">
                                         <i class="bi bi-trash"></i> Clean Orphaned Files
                                     </button>
-                                    <button class="bi bi-image"></i> Optimize Images
+                                    <button class="btn btn-outline-secondary" onclick="runMaintenance('optimize_images')">
+                                        <i class="bi bi-image"></i> Optimize Images
                                     </button>
                                     <button class="btn btn-outline-info" onclick="runMaintenance('clean_logs')">
                                         <i class="bi bi-file-earmark-text"></i> Clean Old Logs

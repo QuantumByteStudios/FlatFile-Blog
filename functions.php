@@ -76,10 +76,14 @@ function get_posts($page = 1, $per_page = 10, $status = 'published')
         return $posts;
     }
 
+    // Clear stat cache to ensure fresh file listings
+    clearstatcache(true, $posts_dir);
     $files = glob($posts_dir . '*.json');
     $all_posts = [];
 
     foreach ($files as $file) {
+        // Clear stat cache for each file before reading
+        clearstatcache(true, $file);
         $post_data = json_decode(file_get_contents($file), true);
         if ($post_data && ($status === 'all' || $post_data['status'] === $status)) {
             $all_posts[] = $post_data;
@@ -109,6 +113,8 @@ function get_post($slug)
         return null;
     }
 
+    // Clear stat cache before reading to ensure fresh data
+    clearstatcache(true, $post_file);
     $post_data = json_decode(file_get_contents($post_file), true);
     return $post_data ?: null;
 }
@@ -223,7 +229,15 @@ function delete_post($slug)
         return false;
     }
 
-    return unlink($post_file);
+    $ok = unlink($post_file);
+    if ($ok) {
+        // Clear PHP's stat cache
+        clearstatcache(true, $post_file);
+        clearstatcache(true, dirname($post_file));
+        // Rebuild index after deletion
+        rebuild_index();
+    }
+    return $ok;
 }
 
 /**
@@ -342,7 +356,7 @@ function get_posts_by_author($author, $page = 1, $per_page = 10)
 function get_posts_by_date_range($date_from = null, $date_to = null)
 {
     $from_ts = !empty($date_from) ? strtotime($date_from . ' 00:00:00') : null;
-    $to_ts   = !empty($date_to)   ? strtotime($date_to   . ' 23:59:59') : null;
+    $to_ts = !empty($date_to) ? strtotime($date_to . ' 23:59:59') : null;
 
     $results = [];
     foreach (all_posts() as $post) {
@@ -391,8 +405,12 @@ function all_posts()
     if (!file_exists($posts_dir)) {
         return $all;
     }
+    // Clear stat cache to ensure fresh file listings
+    clearstatcache(true, $posts_dir);
     $files = glob($posts_dir . '*.json');
     foreach ($files as $file) {
+        // Clear stat cache for each file before reading
+        clearstatcache(true, $file);
         $data = json_decode(file_get_contents($file), true);
         if ($data) {
             $all[] = $data;
@@ -473,6 +491,11 @@ function save_post(array $post_data)
     }
     $ok = (bool) file_put_contents($file, json_encode($post_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
     if ($ok) {
+        // Clear PHP's stat cache to ensure fresh file reads
+        clearstatcache(true, $file);
+        // Clear directory stat cache
+        clearstatcache(true, dirname($file));
+        // Rebuild index
         rebuild_index();
     }
     return $ok;

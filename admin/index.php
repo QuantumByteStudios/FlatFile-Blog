@@ -32,6 +32,11 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Set cache control headers to prevent caching
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
+header('Expires: 0');
+
 // Check if user is logged in
 if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
     header('Location: login');
@@ -43,16 +48,23 @@ $success_message = '';
 $error_message = '';
 
 if (isset($_GET['success'])) {
-    $success_message = $_GET['success'];
+    $success_message = htmlspecialchars(urldecode($_GET['success']), ENT_QUOTES, 'UTF-8');
 }
 if (isset($_GET['error'])) {
-    $error_message = $_GET['error'];
+    $error_message = htmlspecialchars(urldecode($_GET['error']), ENT_QUOTES, 'UTF-8');
 }
 
-// Load dashboard data
+// Clear stat cache to ensure fresh data
+clearstatcache(true);
+
+// Load dashboard data (optimized - only get what we need)
 $all_posts = get_posts(1, 1000, 'all'); // Get all posts (published and drafts)
-$published_posts = get_posts(1, 1000, 'published');
-$draft_posts = get_posts(1, 1000, 'draft');
+$published_posts = array_filter($all_posts, function ($post) {
+    return ($post['status'] ?? '') === 'published';
+});
+$draft_posts = array_filter($all_posts, function ($post) {
+    return ($post['status'] ?? '') === 'draft';
+});
 $total_posts = count($all_posts);
 $published_count = count($published_posts);
 $draft_count = count($draft_posts);
@@ -63,8 +75,13 @@ $recent_posts = array_slice($all_posts, 0, 5);
 // Get posts by month for chart data
 $posts_by_month = [];
 foreach ($all_posts as $post) {
-    $month = date('Y-m', strtotime($post['date']));
-    $posts_by_month[$month] = ($posts_by_month[$month] ?? 0) + 1;
+    if (!empty($post['date'])) {
+        $timestamp = strtotime($post['date']);
+        if ($timestamp !== false) {
+            $month = date('Y-m', $timestamp);
+            $posts_by_month[$month] = ($posts_by_month[$month] ?? 0) + 1;
+        }
+    }
 }
 
 // Get most used tags
@@ -91,6 +108,9 @@ $csrf_token = function_exists('generate_csrf_token') ? generate_csrf_token() : (
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Admin Dashboard - <?php echo SITE_TITLE; ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
@@ -172,7 +192,8 @@ $csrf_token = function_exists('generate_csrf_token') ? generate_csrf_token() : (
                             <form method="POST" action="<?php echo BASE_URL; ?>admin_action" class="ms-3">
                                 <input type="hidden" name="action" value="delete_install_file">
                                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
-                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete install.php now?');">
+                                <button type="submit" class="btn btn-sm btn-danger"
+                                    onclick="return confirm('Delete install.php now?');">
                                     <i class="bi bi-trash"></i> Delete install.php
                                 </button>
                             </form>
@@ -263,7 +284,8 @@ $csrf_token = function_exists('generate_csrf_token') ? generate_csrf_token() : (
                                                     <div class="flex-grow-1 overflow-hidden" style="min-width:0;">
                                                         <h6 class="mb-1 text-truncate">
                                                             <a href="<?php echo BASE_URL; ?><?php echo urlencode($post['slug']); ?>"
-                                                                class="text-decoration-none d-inline-block text-truncate w-100" target="_blank">
+                                                                class="text-decoration-none d-inline-block text-truncate w-100"
+                                                                target="_blank">
                                                                 <?php echo htmlspecialchars($post['title']); ?>
                                                             </a>
                                                         </h6>
@@ -273,21 +295,24 @@ $csrf_token = function_exists('generate_csrf_token') ? generate_csrf_token() : (
                                                         </small>
                                                     </div>
                                                     <div class="ms-3 text-nowrap">
-                                                        <span class="badge bg-<?php echo $post['status'] === 'published' ? 'success' : 'warning'; ?> me-2">
+                                                        <span
+                                                            class="badge bg-<?php echo $post['status'] === 'published' ? 'success' : 'warning'; ?> me-2">
                                                             <?php echo ucfirst($post['status']); ?>
                                                         </span>
                                                         <div class="btn-group" role="group">
                                                             <a href="<?php echo BASE_URL; ?><?php echo urlencode($post['slug']); ?>"
-                                                                class="btn btn-sm btn-outline-dark" target="_blank" title="View">
+                                                                class="btn btn-sm btn-outline-dark" target="_blank"
+                                                                title="View">
                                                                 <i class="bi bi-eye"></i>
                                                             </a>
-                                                            <a href="edit-post?slug=<?php echo urlencode($post['slug']); ?>"
+                                                            <a href="edit-post?slug=<?php echo htmlspecialchars(urlencode($post['slug']), ENT_QUOTES, 'UTF-8'); ?>"
                                                                 class="btn btn-sm btn-outline-dark" title="Edit">
                                                                 <i class="bi bi-pencil"></i>
                                                             </a>
-                                                            <a href="delete-post?slug=<?php echo urlencode($post['slug']); ?>"
+                                                            <a href="delete-post?slug=<?php echo htmlspecialchars(urlencode($post['slug']), ENT_QUOTES, 'UTF-8'); ?>"
                                                                 class="btn btn-sm btn-outline-dark"
-                                                                onclick="return confirm('Are you sure you want to delete this post?')" title="Delete">
+                                                                onclick="return confirm('Are you sure you want to delete this post?')"
+                                                                title="Delete">
                                                                 <i class="bi bi-trash"></i>
                                                             </a>
                                                         </div>
@@ -318,7 +343,8 @@ $csrf_token = function_exists('generate_csrf_token') ? generate_csrf_token() : (
                                         <?php foreach (array_slice($recent_posts, 0, 3) as $post): ?>
                                             <div class="d-flex align-items-center mb-3">
                                                 <div class="flex-shrink-0">
-                                                    <i class="bi bi-<?php echo $post['status'] === 'published' ? 'check-circle text-success' : 'pencil text-warning'; ?>"></i>
+                                                    <i
+                                                        class="bi bi-<?php echo $post['status'] === 'published' ? 'check-circle text-success' : 'pencil text-warning'; ?>"></i>
                                                 </div>
                                                 <div class="flex-grow-1 ms-2 overflow-hidden" style="min-width:0;">
                                                     <div class="fw-bold small text-truncate">
@@ -345,7 +371,8 @@ $csrf_token = function_exists('generate_csrf_token') ? generate_csrf_token() : (
                                     <?php if (!empty($top_tags)): ?>
                                         <?php foreach ($top_tags as $tag => $count): ?>
                                             <div class="d-flex justify-content-between align-items-center mb-2">
-                                                <span class="badge bg-light text-dark"><?php echo htmlspecialchars($tag); ?></span>
+                                                <span
+                                                    class="badge bg-light text-dark"><?php echo htmlspecialchars($tag); ?></span>
                                                 <small class="text-muted"><?php echo $count; ?> posts</small>
                                             </div>
                                         <?php endforeach; ?>

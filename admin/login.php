@@ -44,13 +44,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
 
-    if ($username === ADMIN_USERNAME && password_verify($password, ADMIN_PASSWORD_HASH)) {
+    // Basic input validation
+    if (empty($username) || empty($password)) {
+        $error_message = 'Username and password are required.';
+    } elseif (strlen($username) > 100) {
+        $error_message = 'Invalid username.';
+    } elseif ($username === ADMIN_USERNAME && password_verify($password, ADMIN_PASSWORD_HASH)) {
         $_SESSION['admin_logged_in'] = true;
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        $_SESSION['login_time'] = time();
         session_regenerate_id(true);
         header('Location: ' . BASE_URL . 'admin/');
         exit;
     } else {
+        // Don't reveal which field is wrong for security
         $error_message = 'Invalid username or password.';
     }
 }
@@ -104,8 +111,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <span class="input-group-text bg-light border-end-0">
                                         <i class="bi bi-lock"></i>
                                     </span>
-                                    <input type="password" class="form-control border-start-0" id="password" name="password"
-                                        placeholder="Enter your password" required>
+                                    <input type="password" class="form-control border-start-0" id="password"
+                                        name="password" placeholder="Enter your password" required>
                                 </div>
                             </div>
 

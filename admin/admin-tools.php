@@ -5,10 +5,26 @@
  * System maintenance and cleanup utilities
  */
 
-require_once '../functions.php';
+// Check if blog is installed
+$config_path = file_exists(__DIR__ . '/../config.php') ? __DIR__ . '/../config.php' : '../config.php';
+if (!file_exists($config_path)) {
+    header('Location: ../install.php');
+    exit;
+}
+
+// Define constant to allow access
+define('ALLOW_DIRECT_ACCESS', true);
+
+try {
+    $functions_path = file_exists(__DIR__ . '/../functions.php') ? __DIR__ . '/../functions.php' : '../functions.php';
+    require_once $functions_path;
+} catch (Exception $e) {
+    error_log('Error loading functions.php: ' . $e->getMessage());
+    die('System error. Please try again later.');
+}
 require_once __DIR__ . '/../libs/SecurityHardener.php';
 require_once __DIR__ . '/../libs/AdminLogger.php';
-require_once 'tools/backup.php';
+require_once __DIR__ . '/tools/backup.php';
 require_once __DIR__ . '/../libs/SelfUpdater.php';
 
 // Initialize security system
@@ -36,8 +52,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         switch ($action) {
             case 'clean_logs':
                 $days = intval($_POST['days'] ?? 90);
-                AdminLogger::cleanOldLogs($days);
-                $success_message = "Cleaned logs older than {$days} days";
+                if ($days < 1 || $days > 365) {
+                    $error_message = "Invalid number of days (must be between 1 and 365).";
+                } else {
+                    AdminLogger::cleanOldLogs($days);
+                    $success_message = "Cleaned logs older than {$days} days";
+                }
                 break;
 
             case 'rebuild_index':
@@ -50,29 +70,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 break;
 
             case 'create_backup':
-                $backup_result = BlogBackup::createBackup('manual');
-                if ($backup_result['success']) {
-                    $success_message = 'Backup created successfully';
-                } else {
-                    $error_message = 'Failed to create backup: ' . $backup_result['error'];
+                try {
+                    $backup_result = BlogBackup::createBackup('manual');
+                    if ($backup_result['success']) {
+                        $success_message = 'Backup created successfully';
+                    } else {
+                        $error_message = 'Failed to create backup: ' . htmlspecialchars($backup_result['error'] ?? 'Unknown error', ENT_QUOTES, 'UTF-8');
+                    }
+                } catch (Exception $e) {
+                    $error_message = 'Backup error: ' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8');
                 }
                 break;
 
             case 'clean_cache':
                 // Clean cache files
                 $cache_dir = __DIR__ . '/../cache/';
+                $cleaned_count = 0;
                 if (is_dir($cache_dir)) {
                     $files = glob($cache_dir . '*');
                     foreach ($files as $file) {
                         if (is_file($file)) {
-                            unlink($file);
+                            if (@unlink($file)) {
+                                $cleaned_count++;
+                            }
                         }
                     }
                 }
-                $success_message = 'Cache cleaned successfully';
+                $success_message = "Cache cleaned successfully ({$cleaned_count} files removed)";
                 break;
 
             case 'run_updater':
+                // Verify CSRF token
+                if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+                    $error_message = "Invalid security token.";
+                    break;
+                }
                 $settings = load_settings();
                 $repo = trim($settings['updater_repo'] ?? '');
                 $token = trim($settings['updater_token'] ?? '');
@@ -232,7 +264,8 @@ $repoConfigured = $displayRepo !== '';
                         <!-- Self-Updater -->
                         <div class="col-lg-4">
                             <div class="card">
-                                <div class="card-header" style="background: linear-gradient(135deg, #000 0%, #333 100%); color: white; border: none;">
+                                <div class="card-header"
+                                    style="background: linear-gradient(135deg, #000 0%, #333 100%); color: white; border: none;">
                                     <h5 class="mb-0">
                                         <i class="bi bi-cloud-arrow-down me-2"></i>Self-Updater
                                     </h5>
@@ -240,7 +273,8 @@ $repoConfigured = $displayRepo !== '';
                                 <div class="card-body">
                                     <div class="mb-2 small text-muted">
                                         Repo: <?php if (!empty($repoUrl)): ?>
-                                            <a href="<?php echo htmlspecialchars($repoUrl); ?>" target="_blank" rel="noopener noreferrer">
+                                            <a href="<?php echo htmlspecialchars($repoUrl); ?>" target="_blank"
+                                                rel="noopener noreferrer">
                                                 <code><?php echo htmlspecialchars($displayRepo); ?></code>
                                             </a>
                                         <?php else: ?>
@@ -248,18 +282,23 @@ $repoConfigured = $displayRepo !== '';
                                         <?php endif; ?>
                                     </div>
                                     <div class="mb-2 small text-muted">
-                                        Access: <span class="badge bg-<?php echo $tokenSet ? 'success' : 'info'; ?>"><?php echo $tokenSet ? 'Private repo access (token set)' : 'Public repo (no token needed)'; ?></span>
+                                        Access: <span
+                                            class="badge bg-<?php echo $tokenSet ? 'success' : 'info'; ?>"><?php echo $tokenSet ? 'Private repo access (token set)' : 'Public repo (no token needed)'; ?></span>
                                     </div>
                                     <form method="POST" class="mt-3">
                                         <input type="hidden" name="action" value="run_updater">
+                                        <input type="hidden" name="csrf_token"
+                                            value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
                                         <button type="submit" class="btn btn-dark btn-sm w-100">
                                             <i class="bi bi-cloud-arrow-down"></i> Update Now
                                         </button>
                                     </form>
-                                    <a href="<?php echo BASE_URL; ?>admin/settings#" class="btn btn-outline-dark btn-sm w-100 mt-2">
+                                    <a href="<?php echo BASE_URL; ?>admin/settings#"
+                                        class="btn btn-outline-dark btn-sm w-100 mt-2">
                                         <i class="bi bi-gear"></i> Configure
                                     </a>
-                                    <div class="form-text mt-2">Pulls latest code from GitHub. Content, uploads, logs, and config are preserved.</div>
+                                    <div class="form-text mt-2">Pulls latest code from GitHub. Content, uploads, logs,
+                                        and config are preserved.</div>
                                 </div>
                             </div>
                         </div>
@@ -267,7 +306,8 @@ $repoConfigured = $displayRepo !== '';
                         <!-- Maintenance -->
                         <div class="col-lg-4">
                             <div class="card">
-                                <div class="card-header" style="background: linear-gradient(135deg, #000 0%, #333 100%); color: white; border: none;">
+                                <div class="card-header"
+                                    style="background: linear-gradient(135deg, #000 0%, #333 100%); color: white; border: none;">
                                     <h5 class="mb-0">
                                         <i class="bi bi-tools me-2"></i>System Maintenance
                                     </h5>
@@ -276,6 +316,8 @@ $repoConfigured = $displayRepo !== '';
                                     <!-- Clean Logs -->
                                     <form method="POST" class="mb-3">
                                         <input type="hidden" name="action" value="clean_logs">
+                                        <input type="hidden" name="csrf_token"
+                                            value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
                                         <div class="d-flex align-items-center mb-2">
                                             <i class="bi bi-trash text-warning me-2"></i>
                                             <strong>Clean Old Logs</strong>
@@ -300,11 +342,14 @@ $repoConfigured = $displayRepo !== '';
                                     <!-- Rebuild Index -->
                                     <form method="POST" class="mb-3">
                                         <input type="hidden" name="action" value="rebuild_index">
+                                        <input type="hidden" name="csrf_token"
+                                            value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
                                         <div class="d-flex align-items-center mb-2">
                                             <i class="bi bi-arrow-clockwise text-info me-2"></i>
                                             <strong>Rebuild Search Index</strong>
                                         </div>
-                                        <p class="text-muted small mb-2">Regenerate the content index for faster searches</p>
+                                        <p class="text-muted small mb-2">Regenerate the content index for faster
+                                            searches</p>
                                         <button type="submit" class="btn btn-dark btn-sm">
                                             <i class="bi bi-arrow-clockwise"></i> Rebuild Index
                                         </button>
@@ -313,6 +358,8 @@ $repoConfigured = $displayRepo !== '';
                                     <!-- Clean Cache -->
                                     <form method="POST" class="mb-3">
                                         <input type="hidden" name="action" value="clean_cache">
+                                        <input type="hidden" name="csrf_token"
+                                            value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
                                         <div class="d-flex align-items-center mb-2">
                                             <i class="bi bi-broom text-secondary me-2"></i>
                                             <strong>Clean Cache</strong>
@@ -331,7 +378,8 @@ $repoConfigured = $displayRepo !== '';
                         <!-- Backup -->
                         <div class="col-lg-4">
                             <div class="card">
-                                <div class="card-header" style="background: linear-gradient(135deg, #000 0%, #333 100%); color: white; border: none;">
+                                <div class="card-header"
+                                    style="background: linear-gradient(135deg, #000 0%, #333 100%); color: white; border: none;">
                                     <h5 class="mb-0">
                                         <i class="bi bi-shield-check me-2"></i>Backup & Security
                                     </h5>
@@ -340,11 +388,14 @@ $repoConfigured = $displayRepo !== '';
                                     <!-- Create Backup -->
                                     <form method="POST" class="mb-3">
                                         <input type="hidden" name="action" value="create_backup">
+                                        <input type="hidden" name="csrf_token"
+                                            value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
                                         <div class="d-flex align-items-center mb-2">
                                             <i class="bi bi-archive text-success me-2"></i>
                                             <strong>Create Backup</strong>
                                         </div>
-                                        <p class="text-muted small mb-2">Create a full backup of all content and uploads</p>
+                                        <p class="text-muted small mb-2">Create a full backup of all content and uploads
+                                        </p>
                                         <button type="submit" class="btn btn-dark btn-sm">
                                             <i class="bi bi-archive"></i> Create Backup
                                         </button>
