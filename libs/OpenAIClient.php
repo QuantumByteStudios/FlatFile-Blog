@@ -110,6 +110,9 @@ class OpenAIClient
 
 		$decoded = json_decode($result, true);
 		if ($httpCode < 200 || $httpCode >= 300) {
+			if ($httpCode === 401) {
+				return ['error' => 'Unauthorized: Invalid or expired API key. Please check your OpenAI API key in Settings.'];
+			}
 			if (is_array($decoded) && isset($decoded['error'])) {
 				$message = is_array($decoded['error']) ? ($decoded['error']['message'] ?? 'Unknown error') : (string)$decoded['error'];
 				return ['error' => 'HTTP ' . $httpCode . ': ' . $message, 'raw' => $decoded];
