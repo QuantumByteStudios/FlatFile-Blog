@@ -232,7 +232,7 @@ if (isset($_GET['error'])) {
                                         <label for="date" class="form-label fw-medium">Publish Date/Time</label>
                                         <input type="datetime-local" class="form-control" id="date" name="date"
                                             value="<?php echo htmlspecialchars(isset($date) ? date('Y-m-d\\TH:i', strtotime($date)) : date('Y-m-d\\TH:i')); ?>">
-                                        <div class="form-text text-muted small mt-1">Leave as-is for current time.</div>
+                                        <div class="form-text text-muted small mt-1">Set a future date to schedule the post. Posts with future dates won't appear until that date.</div>
                                     </div>
 
                                     <div class="mb-4">

@@ -285,9 +285,14 @@ $csrf_token = function_exists('generate_csrf_token') ? generate_csrf_token() : (
                                                         </small>
                                                     </div>
                                                     <div class="ms-3 text-nowrap">
-                                                        <span
-                                                            class="badge bg-<?php echo $post['status'] === 'published' ? 'success' : 'warning'; ?> me-2">
-                                                            <?php echo ucfirst($post['status']); ?>
+                                                        <?php
+                                                        $post_date = isset($post['date']) ? strtotime($post['date']) : 0;
+                                                        $is_scheduled = $post['status'] === 'published' && $post_date > time();
+                                                        $badge_class = $is_scheduled ? 'info' : ($post['status'] === 'published' ? 'success' : 'warning');
+                                                        $badge_text = $is_scheduled ? 'Scheduled' : ucfirst($post['status']);
+                                                        ?>
+                                                        <span class="badge bg-<?php echo $badge_class; ?> me-2">
+                                                            <?php echo $badge_text; ?>
                                                         </span>
                                                         <div class="btn-group" role="group">
                                                             <a href="<?php echo BASE_URL; ?><?php echo urlencode($post['slug']); ?>"
@@ -334,8 +339,15 @@ $csrf_token = function_exists('generate_csrf_token') ? generate_csrf_token() : (
                                         <?php foreach (array_slice($recent_posts, 0, 3) as $post): ?>
                                             <div class="d-flex align-items-center mb-3">
                                                 <div class="flex-shrink-0">
-                                                    <i
-                                                        class="bi bi-<?php echo $post['status'] === 'published' ? 'check-circle text-success' : 'pencil text-warning'; ?>"></i>
+                                                    <?php
+                                                    $post_date = isset($post['date']) ? strtotime($post['date']) : 0;
+                                                    $is_scheduled = $post['status'] === 'published' && $post_date > time();
+                                                    if ($is_scheduled) {
+                                                        echo '<i class="bi bi-clock text-info"></i>';
+                                                    } else {
+                                                        echo '<i class="bi bi-' . ($post['status'] === 'published' ? 'check-circle text-success' : 'pencil text-warning') . '"></i>';
+                                                    }
+                                                    ?>
                                                 </div>
                                                 <div class="flex-grow-1 ms-2 overflow-hidden" style="min-width:0;">
                                                     <div class="fw-bold small text-truncate">

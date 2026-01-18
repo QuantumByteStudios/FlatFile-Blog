@@ -51,6 +51,17 @@ if ($post['status'] !== 'published') {
 	exit;
 }
 
+// Check if post is scheduled for future (scheduling feature)
+// If post date is in the future, don't show it to public
+$post_date = isset($post['date']) ? strtotime($post['date']) : 0;
+$current_time = time();
+if ($post_date > $current_time) {
+	// Post is scheduled for future - show 404 to public
+	header('HTTP/1.0 404 Not Found');
+	include '404.php';
+	exit;
+}
+
 // Determine content type and render accordingly
 $content_type = $post['content_type'] ?? (isset($post['content_markdown']) ? 'markdown' : 'html');
 

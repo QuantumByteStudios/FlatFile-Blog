@@ -80,19 +80,36 @@ function get_posts($page = 1, $per_page = 10, $status = 'published')
     clearstatcache(true, $posts_dir);
     $files = glob($posts_dir . '*.json');
     $all_posts = [];
+    $current_time = time();
 
     foreach ($files as $file) {
         // Clear stat cache for each file before reading
         clearstatcache(true, $file);
         $post_data = json_decode(file_get_contents($file), true);
-        if ($post_data && ($status === 'all' || $post_data['status'] === $status)) {
-            $all_posts[] = $post_data;
+        if (!$post_data) {
+            continue;
         }
+
+        // Check status filter
+        if ($status !== 'all' && ($post_data['status'] ?? '') !== $status) {
+            continue;
+        }
+
+        // For published posts, check if date is in the future (scheduling)
+        if ($status === 'published' && ($post_data['status'] ?? '') === 'published') {
+            $post_date = isset($post_data['date']) ? strtotime($post_data['date']) : 0;
+            // If post date is in the future, exclude it (not published yet)
+            if ($post_date > $current_time) {
+                continue;
+            }
+        }
+
+        $all_posts[] = $post_data;
     }
 
     // Sort by date (newest first)
     usort($all_posts, function ($a, $b) {
-        return strtotime($b['date']) - strtotime($a['date']);
+        return strtotime($b['date'] ?? '1970-01-01') - strtotime($a['date'] ?? '1970-01-01');
     });
 
     // Pagination
@@ -132,12 +149,28 @@ function count_posts($status = 'published')
 
     $files = glob($posts_dir . '*.json');
     $count = 0;
+    $current_time = time();
 
     foreach ($files as $file) {
         $post_data = json_decode(file_get_contents($file), true);
-        if ($post_data && $post_data['status'] === $status) {
-            $count++;
+        if (!$post_data) {
+            continue;
         }
+
+        if ($post_data['status'] !== $status) {
+            continue;
+        }
+
+        // For published posts, exclude future-dated posts (scheduled)
+        if ($status === 'published') {
+            $post_date = isset($post_data['date']) ? strtotime($post_data['date']) : 0;
+            // If post date is in the future, don't count it
+            if ($post_date > $current_time) {
+                continue;
+            }
+        }
+
+        $count++;
     }
 
     return $count;
@@ -296,8 +329,23 @@ function all_posts()
 function get_posts_by_status($status)
 {
     $all = all_posts();
-    return array_values(array_filter($all, function ($p) use ($status) {
-        return isset($p['status']) && $p['status'] === $status;
+    $current_time = time();
+    
+    return array_values(array_filter($all, function ($p) use ($status, $current_time) {
+        if (!isset($p['status']) || $p['status'] !== $status) {
+            return false;
+        }
+        
+        // For published posts, exclude future-dated posts (scheduled)
+        if ($status === 'published') {
+            $post_date = isset($p['date']) ? strtotime($p['date']) : 0;
+            // If post date is in the future, exclude it
+            if ($post_date > $current_time) {
+                return false;
+            }
+        }
+        
+        return true;
     }));
 }
 
