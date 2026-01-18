@@ -176,10 +176,10 @@ $csrf_token = function_exists('generate_csrf_token') ? generate_csrf_token() : (
                     <?php endif; ?>
 
                     <!-- Header -->
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h1 class="h3 mb-0">Dashboard</h1>
-                        <div class="text-muted">
-                            Welcome back, Admin
+                    <div class="mb-5">
+                        <div class="bg-dark text-white p-3 rounded mb-3">
+                            <h1 class="h3 mb-1 fw-bold text-white">Dashboard</h1>
+                            <p class="text-white-50 mb-0 small">Welcome back, Admin</p>
                         </div>
                     </div>
 
@@ -200,87 +200,71 @@ $csrf_token = function_exists('generate_csrf_token') ? generate_csrf_token() : (
                         </div>
                     <?php endif; ?>
 
-                    <!-- Stats Cards -->
-                    <div class="row mb-4">
-                        <div class="col-md-3 mb-3">
-                            <div class="card stats-card bg-primary text-white">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h3 class="mb-1 fw-bold"><?php echo $total_posts; ?></h3>
-                                            <p class="mb-0 opacity-75">Total Posts</p>
-                                        </div>
-                                        <div class="opacity-75">
-                                            <i class="bi bi-file-text" style="font-size: 2.5rem;"></i>
-                                        </div>
+                    <!-- Stats -->
+                    <div class="row g-4 mb-5">
+                        <div class="col-md-3">
+                            <div class="bg-dark text-white p-3 rounded">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-file-text me-2" style="font-size: 1.5rem;"></i>
+                                    <div>
+                                        <h3 class="mb-0 fw-bold text-white"><?php echo $total_posts; ?></h3>
+                                        <p class="mb-0 text-white-50 small">Total Posts</p>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="col-md-3 mb-3">
-                            <div class="card stats-card bg-success text-white">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h3 class="mb-1 fw-bold"><?php echo $published_count; ?></h3>
-                                            <p class="mb-0 opacity-75">Published</p>
-                                        </div>
-                                        <div class="opacity-75">
-                                            <i class="bi bi-check-circle" style="font-size: 2.5rem;"></i>
-                                        </div>
+                        <div class="col-md-3">
+                            <div class="bg-dark text-white p-3 rounded">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-check-circle me-2" style="font-size: 1.5rem;"></i>
+                                    <div>
+                                        <h3 class="mb-0 fw-bold text-white"><?php echo $published_count; ?></h3>
+                                        <p class="mb-0 text-white-50 small">Published</p>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="col-md-3 mb-3">
-                            <div class="card stats-card bg-warning text-white">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h3 class="mb-1 fw-bold"><?php echo $draft_count; ?></h3>
-                                            <p class="mb-0 opacity-75">Drafts</p>
-                                        </div>
-                                        <div class="opacity-75">
-                                            <i class="bi bi-pencil" style="font-size: 2.5rem;"></i>
-                                        </div>
+                        <div class="col-md-3">
+                            <div class="bg-dark text-white p-3 rounded">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-pencil me-2" style="font-size: 1.5rem;"></i>
+                                    <div>
+                                        <h3 class="mb-0 fw-bold text-white"><?php echo $draft_count; ?></h3>
+                                        <p class="mb-0 text-white-50 small">Drafts</p>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="col-md-3 mb-3">
-                            <div class="card stats-card bg-info text-white">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h3 class="mb-1 fw-bold"><?php echo count($top_tags); ?></h3>
-                                            <p class="mb-0 opacity-75">Active Tags</p>
-                                        </div>
-                                        <div class="opacity-75">
-                                            <i class="bi bi-tags" style="font-size: 2.5rem;"></i>
-                                        </div>
+                        <div class="col-md-3">
+                            <div class="bg-dark text-white p-3 rounded">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-tags me-2" style="font-size: 1.5rem;"></i>
+                                    <div>
+                                        <h3 class="mb-0 fw-bold text-white"><?php echo count($top_tags); ?></h3>
+                                        <p class="mb-0 text-white-50 small">Active Tags</p>
                                     </div>
                                 </div>
                             </div>
                         </div>
-
                     </div>
 
                     <!-- Dashboard Content -->
-                    <div class="row">
+                    <div class="row g-4">
                         <!-- Recent Posts -->
-                        <div class="col-lg-8 mb-4">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5 class="mb-0">Recent Posts</h5>
-                                </div>
-                                <div class="card-body">
+                        <div class="col-lg-8">
+                            <div class="bg-dark text-white p-3 rounded mb-4">
+                                <h5 class="mb-0 fw-semibold text-white">
+                                    <i class="bi bi-clock-history me-2"></i>Recent Posts
+                                </h5>
+                            </div>
+                            <div>
                                     <?php if (!empty($recent_posts)): ?>
-                                        <div class="list-group list-group-flush">
+                                        <div>
                                             <?php foreach ($recent_posts as $post): ?>
-                                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                                <div class="d-flex justify-content-between align-items-center py-3 border-bottom">
                                                     <div class="flex-grow-1 overflow-hidden" style="min-width:0;">
                                                         <h6 class="mb-1 text-truncate">
                                                             <a href="<?php echo BASE_URL; ?><?php echo urlencode($post['slug']); ?>"
@@ -321,24 +305,25 @@ $csrf_token = function_exists('generate_csrf_token') ? generate_csrf_token() : (
                                             <?php endforeach; ?>
                                         </div>
                                     <?php else: ?>
-                                        <div class="text-center py-4">
+                                        <div class="text-center py-5">
                                             <i class="bi bi-file-text text-muted" style="font-size: 3rem;"></i>
-                                            <p class="text-muted mt-2">No posts yet</p>
-                                            <a href="new-post" class="btn btn-primary">Create your first post</a>
+                                            <p class="text-muted mt-3 mb-3">No posts yet</p>
+                                            <a href="new-post" class="btn btn-dark btn-sm">Create your first post</a>
                                         </div>
                                     <?php endif; ?>
-                                </div>
                             </div>
                         </div>
 
                         <!-- Sidebar -->
                         <div class="col-lg-4">
                             <!-- Recent Activity -->
-                            <div class="card mb-4">
-                                <div class="card-header">
-                                    <h5 class="mb-0">Recent Activity</h5>
+                            <div class="mb-4">
+                                <div class="bg-dark text-white p-3 rounded mb-4">
+                                    <h5 class="mb-0 fw-semibold text-white">
+                                        <i class="bi bi-activity me-2"></i>Recent Activity
+                                    </h5>
                                 </div>
-                                <div class="card-body">
+                                <div>
                                     <?php if (!empty($recent_posts)): ?>
                                         <?php foreach (array_slice($recent_posts, 0, 3) as $post): ?>
                                             <div class="d-flex align-items-center mb-3">
@@ -363,11 +348,13 @@ $csrf_token = function_exists('generate_csrf_token') ? generate_csrf_token() : (
                             </div>
 
                             <!-- Top Tags -->
-                            <div class="card mb-4">
-                                <div class="card-header">
-                                    <h5 class="mb-0">Popular Tags</h5>
+                            <div class="mb-4">
+                                <div class="bg-dark text-white p-3 rounded mb-4">
+                                    <h5 class="mb-0 fw-semibold text-white">
+                                        <i class="bi bi-tags me-2"></i>Popular Tags
+                                    </h5>
                                 </div>
-                                <div class="card-body">
+                                <div>
                                     <?php if (!empty($top_tags)): ?>
                                         <?php foreach ($top_tags as $tag => $count): ?>
                                             <div class="d-flex justify-content-between align-items-center mb-2">
@@ -383,11 +370,13 @@ $csrf_token = function_exists('generate_csrf_token') ? generate_csrf_token() : (
                             </div>
 
                             <!-- System Info -->
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5 class="mb-0">System Info</h5>
+                            <div>
+                                <div class="bg-dark text-white p-3 rounded mb-4">
+                                    <h5 class="mb-0 fw-semibold text-white">
+                                        <i class="bi bi-info-circle me-2"></i>System Info
+                                    </h5>
                                 </div>
-                                <div class="card-body">
+                                <div>
                                     <div class="row text-center">
                                         <div class="col-6">
                                             <div class="border-end">

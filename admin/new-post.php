@@ -31,6 +31,11 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Set cache control headers to prevent caching
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
+header('Expires: 0');
+
 // Check if user is logged in
 if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
     header('Location: login');
@@ -108,11 +113,15 @@ if (isset($_GET['error'])) {
             <div class="col-md-9 col-lg-10">
                 <div class="container-fluid py-4">
                     <!-- Header -->
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h1 class="h3 mb-0">New Post</h1>
-                        <a href="<?php echo BASE_URL; ?>admin" class="btn btn-outline-secondary">
-                            <i class="bi bi-arrow-left"></i> Back to Dashboard
-                        </a>
+                    <div class="mb-5">
+                        <div class="bg-dark text-white p-3 rounded mb-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h1 class="h3 mb-0 fw-bold text-white">New Post</h1>
+                                <a href="<?php echo BASE_URL; ?>admin" class="btn btn-outline-light btn-sm">
+                                    <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+                                </a>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Messages -->
@@ -136,56 +145,55 @@ if (isset($_GET['error'])) {
                         <input type="hidden" name="csrf_token"
                             value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
 
-                        <div class="row">
+                        <div class="row g-4">
                             <div class="col-lg-8">
                                 <!-- Main Content -->
-                                <div class="card mb-4">
-                                    <div class="card-header d-flex justify-content-between align-items-center">
-                                        <h5 class="mb-0">Post Content</h5>
-                                        <button
-                                            style="background: linear-gradient(50deg, #c77dff 0%, #e0aaff 100%); color: white; border: 1px solid #c77dff"
-                                            type="button" class="btn" data-bs-toggle="modal" data-bs-target="#aiModal">
-                                            <i class="bi bi-stars"></i> Generate with AI
+                                <div class="mb-4">
+                                    <div class="bg-dark text-white p-3 rounded mb-4 d-flex justify-content-between align-items-center">
+                                        <h5 class="mb-0 fw-semibold text-white">
+                                            <i class="bi bi-file-text me-2"></i>Post Content
+                                        </h5>
+                                        <button type="button" class="btn btn-sm btn-outline-light" data-bs-toggle="modal" data-bs-target="#aiModal">
+                                            <i class="bi bi-stars me-1"></i>Generate with AI
                                         </button>
                                     </div>
-                                    <div class="card-body">
-                                        <div class="mb-3">
-                                            <label for="title" class="form-label">Title *</label>
-                                            <input type="text" class="form-control" id="title" name="title"
-                                                value="<?php echo htmlspecialchars($title ?? ''); ?>" required>
-                                        </div>
+                                    
+                                    <div class="mb-4">
+                                        <label for="title" class="form-label fw-medium">Title *</label>
+                                        <input type="text" class="form-control" id="title" name="title"
+                                            value="<?php echo htmlspecialchars($title ?? ''); ?>" required>
+                                    </div>
 
-                                        <div class="mb-3">
-                                            <label for="slug" class="form-label">Slug</label>
-                                            <input type="text" class="form-control" id="slug" name="slug"
-                                                value="<?php echo htmlspecialchars($slug ?? ''); ?>"
-                                                placeholder="auto-generated from title">
-                                        </div>
+                                    <div class="mb-4">
+                                        <label for="slug" class="form-label fw-medium">Slug</label>
+                                        <input type="text" class="form-control" id="slug" name="slug"
+                                            value="<?php echo htmlspecialchars($slug ?? ''); ?>"
+                                            placeholder="auto-generated from title">
+                                    </div>
 
-                                        <div class="mb-3">
-                                            <label for="excerpt" class="form-label">Excerpt</label>
-                                            <textarea class="form-control" id="excerpt" name="excerpt" rows="3"
-                                                placeholder="Brief description of the post"><?php echo htmlspecialchars($excerpt ?? ''); ?></textarea>
-                                        </div>
+                                    <div class="mb-4">
+                                        <label for="excerpt" class="form-label fw-medium">Excerpt</label>
+                                        <textarea class="form-control" id="excerpt" name="excerpt" rows="3"
+                                            placeholder="Brief description of the post"><?php echo htmlspecialchars($excerpt ?? ''); ?></textarea>
+                                    </div>
 
-                                        <div class="mb-3">
-                                            <label for="content_type" class="form-label">Content Type</label>
-                                            <select class="form-select" id="content_type" name="content_type"
-                                                onchange="toggleContentType()">
-                                                <option value="html" <?php echo ($content_type ?? 'html') === 'html' ? 'selected' : ''; ?>>HTML</option>
-                                                <option value="markdown" <?php echo ($content_type ?? 'html') === 'markdown' ? 'selected' : ''; ?>>Markdown</option>
-                                            </select>
-                                        </div>
+                                    <div class="mb-4">
+                                        <label for="content_type" class="form-label fw-medium">Content Type</label>
+                                        <select class="form-select" id="content_type" name="content_type"
+                                            onchange="toggleContentType()">
+                                            <option value="html" <?php echo ($content_type ?? 'html') === 'html' ? 'selected' : ''; ?>>HTML</option>
+                                            <option value="markdown" <?php echo ($content_type ?? 'html') === 'markdown' ? 'selected' : ''; ?>>Markdown</option>
+                                        </select>
+                                    </div>
 
-                                        <div class="mb-3">
-                                            <label for="content" class="form-label">Content *</label>
-                                            <textarea class="form-control" id="content" name="content" rows="15"
-                                                required
-                                                placeholder="Write your post content..."><?php echo htmlspecialchars($content ?? ''); ?></textarea>
-                                            <div class="form-text" id="content-help">
-                                                <strong>Markdown supported:</strong> Use **bold**, *italic*, `code`,
-                                                [links](url), # headers, etc.
-                                            </div>
+                                    <div class="mb-4">
+                                        <label for="content" class="form-label fw-medium">Content *</label>
+                                        <textarea class="form-control" id="content" name="content" rows="15"
+                                            required
+                                            placeholder="Write your post content..."><?php echo htmlspecialchars($content ?? ''); ?></textarea>
+                                        <div class="form-text text-muted small mt-1" id="content-help">
+                                            <strong>Markdown supported:</strong> Use **bold**, *italic*, `code`,
+                                            [links](url), # headers, etc.
                                         </div>
                                     </div>
                                 </div>
@@ -193,83 +201,82 @@ if (isset($_GET['error'])) {
 
                             <div class="col-lg-4">
                                 <!-- Publish Settings -->
-                                <div class="card mb-4">
-                                    <div class="card-header">
-                                        <h5 class="mb-0">Publish Settings</h5>
+                                <div class="mb-4">
+                                    <div class="bg-dark text-white p-3 rounded mb-4">
+                                        <h5 class="mb-0 fw-semibold text-white">
+                                            <i class="bi bi-gear me-2"></i>Publish Settings
+                                        </h5>
                                     </div>
-                                    <div class="card-body">
-                                        <div class="mb-3">
-                                            <label for="status" class="form-label">Status</label>
-                                            <select class="form-select" id="status" name="status">
-                                                <option value="draft" <?php echo ($status ?? 'draft') === 'draft' ? 'selected' : ''; ?>>Draft</option>
-                                                <option value="published" <?php echo ($status ?? '') === 'published' ? 'selected' : ''; ?>>Published</option>
-                                            </select>
-                                        </div>
+                                    
+                                    <div class="mb-4">
+                                        <label for="status" class="form-label fw-medium">Status</label>
+                                        <select class="form-select" id="status" name="status">
+                                            <option value="draft" <?php echo ($status ?? 'draft') === 'draft' ? 'selected' : ''; ?>>Draft</option>
+                                            <option value="published" <?php echo ($status ?? '') === 'published' ? 'selected' : ''; ?>>Published</option>
+                                        </select>
+                                    </div>
 
-                                        <div class="mb-3">
-                                            <label for="author" class="form-label">Author</label>
-                                            <input type="text" class="form-control" id="author" name="author"
-                                                value="<?php echo htmlspecialchars($author ?? 'Admin'); ?>">
-                                        </div>
+                                    <div class="mb-4">
+                                        <label for="author" class="form-label fw-medium">Author</label>
+                                        <input type="text" class="form-control" id="author" name="author"
+                                            value="<?php echo htmlspecialchars($author ?? 'Admin'); ?>">
+                                    </div>
 
-                                        <div class="mb-3">
-                                            <label for="date" class="form-label">Publish Date/Time</label>
-                                            <input type="datetime-local" class="form-control" id="date" name="date"
-                                                value="<?php echo htmlspecialchars(isset($date) ? date('Y-m-d\\TH:i', strtotime($date)) : date('Y-m-d\\TH:i')); ?>">
-                                            <div class="form-text">Leave as-is for current time.</div>
-                                        </div>
+                                    <div class="mb-4">
+                                        <label for="date" class="form-label fw-medium">Publish Date/Time</label>
+                                        <input type="datetime-local" class="form-control" id="date" name="date"
+                                            value="<?php echo htmlspecialchars(isset($date) ? date('Y-m-d\\TH:i', strtotime($date)) : date('Y-m-d\\TH:i')); ?>">
+                                        <div class="form-text text-muted small mt-1">Leave as-is for current time.</div>
+                                    </div>
 
-                                        <div class="mb-3">
-                                            <label for="updated" class="form-label">Last Edited Time</label>
-                                            <input type="datetime-local" class="form-control" id="updated"
-                                                name="updated"
-                                                value="<?php echo htmlspecialchars(isset($date) ? date('Y-m-d\\TH:i', strtotime($date)) : date('Y-m-d\\TH:i')); ?>">
-                                            <div class="form-text">Defaults to the publish time.</div>
-                                        </div>
+                                    <div class="mb-4">
+                                        <label for="updated" class="form-label fw-medium">Last Edited Time</label>
+                                        <input type="datetime-local" class="form-control" id="updated"
+                                            name="updated"
+                                            value="<?php echo htmlspecialchars(isset($date) ? date('Y-m-d\\TH:i', strtotime($date)) : date('Y-m-d\\TH:i')); ?>">
+                                        <div class="form-text text-muted small mt-1">Defaults to the publish time.</div>
+                                    </div>
 
-                                        <div class="mb-3">
-                                            <label for="featured_image" class="form-label">Featured Image</label>
-                                            <input type="file" class="form-control" id="featured_image"
-                                                name="featured_image" accept="image/*">
-                                            <div class="form-text">Upload a featured image for this post (JPG, PNG, GIF,
-                                                WebP)</div>
-                                        </div>
+                                    <div class="mb-4">
+                                        <label for="featured_image" class="form-label fw-medium">Featured Image</label>
+                                        <input type="file" class="form-control" id="featured_image"
+                                            name="featured_image" accept="image/*">
+                                        <div class="form-text text-muted small mt-1">Upload a featured image for this post (JPG, PNG, GIF, WebP)</div>
                                     </div>
                                 </div>
 
                                 <!-- Tags & Categories -->
-                                <div class="card mb-4">
-                                    <div class="card-header">
-                                        <h5 class="mb-0">Tags & Categories</h5>
+                                <div class="mb-4">
+                                    <div class="bg-dark text-white p-3 rounded mb-4">
+                                        <h5 class="mb-0 fw-semibold text-white">
+                                            <i class="bi bi-tags me-2"></i>Tags & Categories
+                                        </h5>
                                     </div>
-                                    <div class="card-body">
-                                        <div class="mb-3">
-                                            <label for="tags" class="form-label">Tags</label>
-                                            <input type="text" class="form-control" id="tags" name="tags"
-                                                value="<?php echo htmlspecialchars(implode(', ', $tags ?? [])); ?>"
-                                                placeholder="tag1, tag2, tag3">
-                                        </div>
+                                    
+                                    <div class="mb-4">
+                                        <label for="tags" class="form-label fw-medium">Tags</label>
+                                        <input type="text" class="form-control" id="tags" name="tags"
+                                            value="<?php echo htmlspecialchars(implode(', ', $tags ?? [])); ?>"
+                                            placeholder="tag1, tag2, tag3">
+                                    </div>
 
-                                        <div class="mb-3">
-                                            <label for="categories" class="form-label">Categories</label>
-                                            <input type="text" class="form-control" id="categories" name="categories"
-                                                value="<?php echo htmlspecialchars(implode(', ', $categories ?? [])); ?>"
-                                                placeholder="category1, category2">
-                                        </div>
+                                    <div class="mb-4">
+                                        <label for="categories" class="form-label fw-medium">Categories</label>
+                                        <input type="text" class="form-control" id="categories" name="categories"
+                                            value="<?php echo htmlspecialchars(implode(', ', $categories ?? [])); ?>"
+                                            placeholder="category1, category2">
                                     </div>
                                 </div>
 
                                 <!-- Actions -->
-                                <div class="card">
-                                    <div class="card-body">
-                                        <div class="d-grid gap-2">
-                                            <button type="submit" class="btn btn-dark text-start">
-                                                <i class="bi bi-check-circle"></i> Create Post
-                                            </button>
-                                            <a href="<?php echo BASE_URL; ?>admin" class="btn btn-dark text-start">
-                                                <i class="bi bi-x-circle"></i> Cancel
-                                            </a>
-                                        </div>
+                                <div class="border-top pt-4">
+                                    <div class="d-grid gap-2">
+                                        <button type="submit" class="btn btn-dark btn-sm">
+                                            <i class="bi bi-check-circle me-2"></i>Create Post
+                                        </button>
+                                        <a href="<?php echo BASE_URL; ?>admin" class="btn btn-outline-dark btn-sm">
+                                            <i class="bi bi-x-circle me-2"></i>Cancel
+                                        </a>
                                     </div>
                                 </div>
                             </div>
