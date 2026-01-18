@@ -8,7 +8,9 @@ class OpenAIClient
 
 	public function __construct($apiKey, $model = 'openai/gpt-4o-mini', $endpoint = 'https://models.github.ai/inference')
 	{
+		// Remove any whitespace, newlines, or hidden characters
 		$this->apiKey = trim($apiKey);
+		$this->apiKey = preg_replace('/\s+/', '', $this->apiKey);
 		$this->model = trim($model);
 		$this->endpoint = rtrim($endpoint, '/');
 	}
@@ -89,14 +91,21 @@ class OpenAIClient
 		$ch = curl_init($url);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 		curl_setopt($ch, CURLOPT_POST, true);
-		curl_setopt($ch, CURLOPT_HTTPHEADER, [
+		
+		// Ensure API key is properly formatted
+		$apiKey = trim($this->apiKey);
+		$headers = [
 			'Content-Type: application/json',
-			'Authorization: Bearer ' . $this->apiKey
-		]);
+			'Authorization: Bearer ' . $apiKey
+		];
+		
+		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 		curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
 		curl_setopt($ch, CURLOPT_TIMEOUT, 45);
 		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
 		curl_setopt($ch, CURLOPT_FAILONERROR, false);
+		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+		curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
 
 		$result = curl_exec($ch);
 		$curlErrNo = curl_errno($ch);
@@ -111,7 +120,33 @@ class OpenAIClient
 		$decoded = json_decode($result, true);
 		if ($httpCode < 200 || $httpCode >= 300) {
 			if ($httpCode === 401) {
-				return ['error' => 'Unauthorized: Invalid or expired API key. Please check your OpenAI API key in Settings.'];
+				// Provide more detailed error info
+				$errorDetail = '';
+				if (is_array($decoded) && isset($decoded['error'])) {
+					$errorDetail = is_array($decoded['error']) ? ($decoded['error']['message'] ?? '') : (string)$decoded['error'];
+				}
+				
+				// Get more info from raw response if available
+				$rawResponse = substr((string)$result, 0, 200);
+				
+				$errorMsg = 'Unauthorized (401): Invalid or expired API key.';
+				if ($errorDetail) {
+					$errorMsg .= ' API says: ' . $errorDetail;
+				} elseif ($rawResponse) {
+					$errorMsg .= ' Response: ' . $rawResponse;
+				}
+				$errorMsg .= ' Please verify your GitHub token in Settings > AI Settings.';
+				
+				// Check if API key looks valid (GitHub tokens usually start with ghp_ or are 40+ chars)
+				$keyLength = strlen($this->apiKey);
+				$keyPreview = substr($this->apiKey, 0, 8) . '...';
+				if ($keyLength < 20) {
+					$errorMsg .= ' Warning: API key seems too short (' . $keyLength . ' chars, starts with: ' . $keyPreview . ').';
+				}
+				
+				// Additional troubleshooting info
+				$errorMsg .= ' Make sure your GitHub token has the correct permissions and is not expired.';
+				return ['error' => $errorMsg];
 			}
 			if (is_array($decoded) && isset($decoded['error'])) {
 				$message = is_array($decoded['error']) ? ($decoded['error']['message'] ?? 'Unknown error') : (string)$decoded['error'];
