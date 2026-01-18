@@ -31,7 +31,7 @@ class OpenAIClient
 			return ['success' => false, 'error' => 'No response from OpenAI service'];
 		}
 		if (isset($response['error'])) {
-			$err = is_array($response['error']) ? ($response['error']['message'] ?? 'OpenAI error') : (string)$response['error'];
+			$err = is_array($response['error']) ? ($response['error']['message'] ?? 'OpenAI error') : (string) $response['error'];
 			return ['success' => false, 'error' => $err];
 		}
 
@@ -91,14 +91,19 @@ class OpenAIClient
 		$ch = curl_init($url);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 		curl_setopt($ch, CURLOPT_POST, true);
-		
-		// Ensure API key is properly formatted
+
+		// Ensure API key is properly formatted - remove any whitespace
 		$apiKey = trim($this->apiKey);
+		$apiKey = preg_replace('/\s+/', '', $apiKey);
+
+		// GitHub Models API authentication
+		// The API expects Bearer token format
 		$headers = [
 			'Content-Type: application/json',
+			'Accept: application/json',
 			'Authorization: Bearer ' . $apiKey
 		];
-		
+
 		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 		curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
 		curl_setopt($ch, CURLOPT_TIMEOUT, 45);
@@ -123,36 +128,52 @@ class OpenAIClient
 				// Provide more detailed error info
 				$errorDetail = '';
 				if (is_array($decoded) && isset($decoded['error'])) {
-					$errorDetail = is_array($decoded['error']) ? ($decoded['error']['message'] ?? '') : (string)$decoded['error'];
+					$errorDetail = is_array($decoded['error']) ? ($decoded['error']['message'] ?? '') : (string) $decoded['error'];
 				}
-				
+
 				// Get more info from raw response if available
-				$rawResponse = substr((string)$result, 0, 200);
-				
+				$rawResponse = substr((string) $result, 0, 200);
+
+				// Check if API key looks valid (GitHub tokens usually start with ghp_ or are 40+ chars)
+				$keyLength = strlen($this->apiKey);
+				$keyPrefix = substr($this->apiKey, 0, 4);
+				$keyPreview = substr($this->apiKey, 0, 8) . '...' . substr($this->apiKey, -4);
+
 				$errorMsg = 'Unauthorized (401): Invalid or expired API key.';
 				if ($errorDetail) {
 					$errorMsg .= ' API says: ' . $errorDetail;
-				} elseif ($rawResponse) {
+				} elseif ($rawResponse && $rawResponse !== 'Unauthorized') {
 					$errorMsg .= ' Response: ' . $rawResponse;
 				}
-				$errorMsg .= ' Please verify your GitHub token in Settings > AI Settings.';
-				
-				// Check if API key looks valid (GitHub tokens usually start with ghp_ or are 40+ chars)
-				$keyLength = strlen($this->apiKey);
-				$keyPreview = substr($this->apiKey, 0, 8) . '...';
+
+				$errorMsg .= "\n\nDiagnostic Info:";
+				$errorMsg .= "\n- Token length: " . $keyLength . " characters";
+				$errorMsg .= "\n- Token starts with: " . $keyPrefix;
+				$errorMsg .= "\n- Token preview: " . $keyPreview;
+				$errorMsg .= "\n- Endpoint: " . $this->endpoint . '/chat/completions';
+
 				if ($keyLength < 20) {
-					$errorMsg .= ' Warning: API key seems too short (' . $keyLength . ' chars, starts with: ' . $keyPreview . ').';
+					$errorMsg .= "\n- ⚠️ Warning: Token seems too short. GitHub tokens are usually 40+ characters.";
 				}
-				
-				// Additional troubleshooting info
-				$errorMsg .= ' Make sure your GitHub token has the correct permissions and is not expired.';
+
+				if ($keyPrefix !== 'ghp_' && $keyLength < 40) {
+					$errorMsg .= "\n- ⚠️ Warning: Token doesn't start with 'ghp_' and is shorter than expected.";
+				}
+
+				$errorMsg .= "\n\nTroubleshooting Steps:";
+				$errorMsg .= "\n1. Verify token is active: Go to GitHub Settings > Developer settings > Personal access tokens";
+				$errorMsg .= "\n2. Check token permissions: Token needs appropriate scopes (read:packages, etc.)";
+				$errorMsg .= "\n3. Regenerate token: Create a new token and update it in Settings > AI Settings";
+				$errorMsg .= "\n4. Verify no extra spaces: Copy token directly without spaces";
+				$errorMsg .= "\n5. Check endpoint: Should be 'https://models.github.ai/inference'";
+
 				return ['error' => $errorMsg];
 			}
 			if (is_array($decoded) && isset($decoded['error'])) {
-				$message = is_array($decoded['error']) ? ($decoded['error']['message'] ?? 'Unknown error') : (string)$decoded['error'];
+				$message = is_array($decoded['error']) ? ($decoded['error']['message'] ?? 'Unknown error') : (string) $decoded['error'];
 				return ['error' => 'HTTP ' . $httpCode . ': ' . $message, 'raw' => $decoded];
 			}
-			return ['error' => 'HTTP ' . $httpCode . ': ' . substr((string)$result, 0, 500)];
+			return ['error' => 'HTTP ' . $httpCode . ': ' . substr((string) $result, 0, 500)];
 		}
 
 		return is_array($decoded) ? $decoded : ['error' => 'Invalid JSON from OpenAI service'];
@@ -161,7 +182,7 @@ class OpenAIClient
 	private function extractText($response)
 	{
 		if (isset($response['choices'][0]['message']['content'])) {
-			return (string)$response['choices'][0]['message']['content'];
+			return (string) $response['choices'][0]['message']['content'];
 		}
 		return '';
 	}
@@ -176,19 +197,21 @@ class OpenAIClient
 
 		$asJson = json_decode($trimmed, true);
 		if (is_array($asJson)) {
-			$title = trim((string)($asJson['title'] ?? ''));
-			$excerpt = trim((string)($asJson['excerpt'] ?? ''));
+			$title = trim((string) ($asJson['title'] ?? ''));
+			$excerpt = trim((string) ($asJson['excerpt'] ?? ''));
 			$tags = $asJson['tags'] ?? [];
 			if (is_string($tags)) {
 				$tags = array_filter(array_map('trim', explode(',', $tags)));
 			}
-			if (!is_array($tags)) $tags = [];
+			if (!is_array($tags))
+				$tags = [];
 			$categories = $asJson['categories'] ?? [];
 			if (is_string($categories)) {
 				$categories = array_filter(array_map('trim', explode(',', $categories)));
 			}
-			if (!is_array($categories)) $categories = [];
-			$contentHtml = (string)($asJson['content_html'] ?? '');
+			if (!is_array($categories))
+				$categories = [];
+			$contentHtml = (string) ($asJson['content_html'] ?? '');
 			// Fallback: if title missing, derive from topic
 			if ($title === '' && $topic !== '') {
 				$title = $this->fallbackTitle($topic);
