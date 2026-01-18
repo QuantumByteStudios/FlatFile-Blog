@@ -172,7 +172,7 @@ function create_post($title, $content, $excerpt = '', $author = '', $status = 'd
         'title' => $title,
         'content' => $content,
         'excerpt' => $excerpt ?: substr(strip_tags($content), 0, 200) . '...',
-        'author' => $author ?: ADMIN_USERNAME,
+        'author' => $author ?: (defined('ADMIN_USERNAME') ? constant('ADMIN_USERNAME') : 'Admin'),
         'date' => $date,
         'updated' => $date,
         'slug' => $slug,
@@ -262,138 +262,6 @@ function create_slug($title)
     return $slug;
 }
 
-/**
- * Get recent posts
- */
-function get_recent_posts($limit = 5)
-{
-    $posts = get_posts(1, $limit);
-    return $posts;
-}
-
-/**
- * Search posts
- */
-function search_posts($query, $page = 1, $per_page = 10)
-{
-    $posts = get_posts(1, 1000); // Get all posts for search
-    $results = [];
-
-    $query = strtolower($query);
-
-    foreach ($posts as $post) {
-        $searchable_text = strtolower($post['title'] . ' ' . $post['content'] . ' ' . $post['excerpt']);
-
-        if (strpos($searchable_text, $query) !== false) {
-            $results[] = $post;
-        }
-    }
-
-    // Pagination
-    $offset = ($page - 1) * $per_page;
-    return array_slice($results, $offset, $per_page);
-}
-
-/**
- * Get posts by tag
- */
-function get_posts_by_tag($tag, $page = 1, $per_page = 10)
-{
-    $posts = get_posts(1, 1000); // Get all posts
-    $results = [];
-
-    foreach ($posts as $post) {
-        if (in_array($tag, $post['tags'])) {
-            $results[] = $post;
-        }
-    }
-
-    // Pagination
-    $offset = ($page - 1) * $per_page;
-    return array_slice($results, $offset, $per_page);
-}
-
-/**
- * Get posts by category
- */
-function get_posts_by_category($category, $page = 1, $per_page = 10)
-{
-    $posts = all_posts();
-    $results = [];
-
-    foreach ($posts as $post) {
-        $categories = $post['categories'] ?? [];
-        if (in_array($category, $categories)) {
-            $results[] = $post;
-        }
-    }
-
-    $offset = ($page - 1) * $per_page;
-    return array_slice($results, $offset, $per_page);
-}
-
-/**
- * Get posts by author
- */
-function get_posts_by_author($author, $page = 1, $per_page = 10)
-{
-    $posts = all_posts();
-    $results = [];
-
-    foreach ($posts as $post) {
-        if (isset($post['author']) && strcasecmp($post['author'], $author) === 0) {
-            $results[] = $post;
-        }
-    }
-
-    $offset = ($page - 1) * $per_page;
-    return array_slice($results, $offset, $per_page);
-}
-
-/**
- * Get posts within a date range (inclusive)
- */
-function get_posts_by_date_range($date_from = null, $date_to = null)
-{
-    $from_ts = !empty($date_from) ? strtotime($date_from . ' 00:00:00') : null;
-    $to_ts = !empty($date_to) ? strtotime($date_to . ' 23:59:59') : null;
-
-    $results = [];
-    foreach (all_posts() as $post) {
-        $post_ts = isset($post['date']) ? strtotime($post['date']) : null;
-        if (!$post_ts) {
-            continue;
-        }
-        if ($from_ts !== null && $post_ts < $from_ts) {
-            continue;
-        }
-        if ($to_ts !== null && $post_ts > $to_ts) {
-            continue;
-        }
-        $results[] = $post;
-    }
-
-    usort($results, function ($a, $b) {
-        return strtotime($b['date'] ?? '1970-01-01') - strtotime($a['date'] ?? '1970-01-01');
-    });
-
-    return $results;
-}
-
-/**
- * Get all tags
- */
-function get_all_tags()
-{
-    $posts = get_posts(1, 1000); // Get all posts
-    $tags = [];
-
-    foreach ($posts as $post) {
-        $tags = array_merge($tags, $post['tags']);
-    }
-
-    return array_unique($tags);
-}
 
 /**
  * Return all posts regardless of status (newest first)
@@ -461,7 +329,7 @@ function rebuild_index()
             'excerpt' => $data['excerpt'] ?? generate_excerpt($data['content'] ?? ($data['content_markdown'] ?? $data['content_html'] ?? '')),
             'tags' => $data['tags'] ?? [],
             'categories' => $data['categories'] ?? [],
-            'author' => $data['author'] ?? (defined('ADMIN_USERNAME') ? ADMIN_USERNAME : 'admin'),
+            'author' => $data['author'] ?? (defined('ADMIN_USERNAME') ? constant('ADMIN_USERNAME') : 'Admin'),
             'meta' => $data['meta'] ?? []
         ];
     }
@@ -620,7 +488,12 @@ function is_logged_in()
  */
 function login_user($username, $password)
 {
-    if ($username === ADMIN_USERNAME && password_verify($password, ADMIN_PASSWORD_HASH)) {
+    if (!defined('ADMIN_USERNAME') || !defined('ADMIN_PASSWORD_HASH')) {
+        return false;
+    }
+    $admin_username = constant('ADMIN_USERNAME');
+    $admin_password_hash = constant('ADMIN_PASSWORD_HASH');
+    if ($username === $admin_username && password_verify($password, $admin_password_hash)) {
         session_start();
         $_SESSION['admin_logged_in'] = true;
         $_SESSION['admin_username'] = $username;
@@ -649,7 +522,8 @@ function check_session_timeout()
     }
 
     session_start();
-    if (isset($_SESSION['login_time']) && (time() - $_SESSION['login_time']) > SESSION_TIMEOUT) {
+    $timeout = defined('SESSION_TIMEOUT') ? constant('SESSION_TIMEOUT') : 3600; // Default 1 hour
+    if (isset($_SESSION['login_time']) && (time() - $_SESSION['login_time']) > $timeout) {
         logout_user();
         return false;
     }
@@ -706,8 +580,9 @@ function validate_email($email)
  */
 function log_error($message, $context = [])
 {
-    if (!file_exists(LOGS_DIR)) {
-        mkdir(LOGS_DIR, 0755, true);
+    $logs_dir = defined('LOGS_DIR') ? constant('LOGS_DIR') : __DIR__ . '/logs/';
+    if (!file_exists($logs_dir)) {
+        mkdir($logs_dir, 0755, true);
     }
 
     $log_entry = [
@@ -719,7 +594,7 @@ function log_error($message, $context = [])
         'line' => debug_backtrace()[0]['line'] ?? 'unknown'
     ];
 
-    $log_file = LOGS_DIR . 'error.log';
+    $log_file = $logs_dir . 'error.log';
     file_put_contents($log_file, json_encode($log_entry) . "\n", FILE_APPEND | LOCK_EX);
 }
 
@@ -728,8 +603,9 @@ function log_error($message, $context = [])
  */
 function log_info($message, $context = [])
 {
-    if (!file_exists(LOGS_DIR)) {
-        mkdir(LOGS_DIR, 0755, true);
+    $logs_dir = defined('LOGS_DIR') ? constant('LOGS_DIR') : __DIR__ . '/logs/';
+    if (!file_exists($logs_dir)) {
+        mkdir($logs_dir, 0755, true);
     }
 
     $log_entry = [
@@ -739,7 +615,7 @@ function log_info($message, $context = [])
         'context' => $context
     ];
 
-    $log_file = LOGS_DIR . 'app.log';
+    $log_file = $logs_dir . 'app.log';
     file_put_contents($log_file, json_encode($log_entry) . "\n", FILE_APPEND | LOCK_EX);
 }
 
@@ -757,10 +633,12 @@ function get_system_health()
     $health['checks']['content_writable'] = is_writable(CONTENT_DIR);
 
     // Check if logs directory is writable
-    $health['checks']['logs_writable'] = is_writable(LOGS_DIR);
+    $logs_dir = defined('LOGS_DIR') ? constant('LOGS_DIR') : __DIR__ . '/logs/';
+    $health['checks']['logs_writable'] = is_writable($logs_dir);
 
     // Check if uploads directory is writable
-    $health['checks']['uploads_writable'] = is_writable(UPLOADS_DIR);
+    $uploads_dir = defined('UPLOADS_DIR') ? constant('UPLOADS_DIR') : __DIR__ . '/uploads/';
+    $health['checks']['uploads_writable'] = is_writable($uploads_dir);
 
     // Check PHP version
     $health['checks']['php_version'] = version_compare(PHP_VERSION, '7.4.0', '>=');
@@ -860,69 +738,18 @@ function is_maintenance_mode()
     return isset($settings['maintenance_mode']) && $settings['maintenance_mode'] === true;
 }
 
-/**
- * Get theme path
- */
-function get_theme_path()
-{
-    $settings = load_settings();
-    $theme = $settings['theme'] ?? 'default';
-    return 'themes/' . $theme . '/';
-}
-
-/**
- * Include theme file
- */
-function include_theme($file)
-{
-    $theme_path = get_theme_path();
-    $file_path = $theme_path . $file;
-
-    if (file_exists($file_path)) {
-        include $file_path;
-    } else {
-        // Fallback to default theme
-        include 'themes/default/' . $file;
-    }
-}
-
-/**
- * Get site statistics
- */
-function get_site_stats()
-{
-    $stats = [
-        'total_posts' => count_posts(),
-        'published_posts' => count_posts('published'),
-        'draft_posts' => count_posts('draft'),
-        'total_comments' => 0,
-        'pending_comments' => 0
-    ];
-
-    // Count comments
-    $posts = get_posts(1, 1000);
-    foreach ($posts as $post) {
-        $stats['total_comments'] += count($post['comments']);
-        foreach ($post['comments'] as $comment) {
-            if (!$comment['approved']) {
-                $stats['pending_comments']++;
-            }
-        }
-    }
-
-    return $stats;
-}
 
 /**
  * Clean old log files
  */
 function clean_old_logs($days = 30)
 {
-    if (!file_exists(LOGS_DIR)) {
+    $logs_dir = defined('LOGS_DIR') ? constant('LOGS_DIR') : __DIR__ . '/logs/';
+    if (!file_exists($logs_dir)) {
         return;
     }
 
-    $files = glob(LOGS_DIR . '*.log');
+    $files = glob($logs_dir . '*.log');
     $cutoff = time() - ($days * 24 * 60 * 60);
 
     foreach ($files as $file) {
@@ -937,7 +764,8 @@ function clean_old_logs($days = 30)
  */
 function backup_content()
 {
-    $backup_dir = LOGS_DIR . 'backups/';
+    $logs_dir = defined('LOGS_DIR') ? constant('LOGS_DIR') : __DIR__ . '/logs/';
+    $backup_dir = $logs_dir . 'backups/';
     if (!file_exists($backup_dir)) {
         mkdir($backup_dir, 0755, true);
     }
@@ -965,62 +793,6 @@ function backup_content()
     return false;
 }
 
-/**
- * Restore content from backup
- */
-function restore_content($backup_file)
-{
-    if (!file_exists($backup_file)) {
-        return false;
-    }
-
-    $zip = new ZipArchive();
-    if ($zip->open($backup_file) === TRUE) {
-        $zip->extractTo(CONTENT_DIR);
-        $zip->close();
-        return true;
-    }
-
-    return false;
-}
-
-/**
- * Get available themes
- */
-function get_available_themes()
-{
-    $themes_dir = 'themes/';
-    $themes = [];
-
-    if (file_exists($themes_dir)) {
-        $dirs = glob($themes_dir . '*', GLOB_ONLYDIR);
-        foreach ($dirs as $dir) {
-            $theme_name = basename($dir);
-            $themes[] = $theme_name;
-        }
-    }
-
-    return $themes;
-}
-
-/**
- * Get theme info
- */
-function get_theme_info($theme)
-{
-    $theme_file = 'themes/' . $theme . '/theme.json';
-
-    if (file_exists($theme_file)) {
-        return json_decode(file_get_contents($theme_file), true);
-    }
-
-    return [
-        'name' => $theme,
-        'version' => '1.0.0',
-        'description' => 'Custom theme',
-        'author' => 'Unknown'
-    ];
-}
 
 /**
  * Initialize blog
@@ -1034,14 +806,14 @@ function init_blog()
 
     // Set timezone
     if (defined('TIMEZONE')) {
-        date_default_timezone_set(TIMEZONE);
+        date_default_timezone_set(constant('TIMEZONE'));
     }
 
     // Check maintenance mode
     if (is_maintenance_mode() && !is_logged_in()) {
         http_response_code(503);
-        include 'maintenance.php';
-        exit;
+        // Maintenance mode - show simple message
+        die('Site is currently under maintenance. Please check back later.');
     }
 
     // Clean old logs periodically
