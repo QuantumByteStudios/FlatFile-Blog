@@ -109,26 +109,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action'])) {
             $openaiKey = trim($settings['openai_api_key'] ?? '');
             $openaiModel = trim($settings['openai_model'] ?? 'openai/gpt-4o-mini');
             $openaiEndpoint = trim($settings['openai_endpoint'] ?? 'https://models.github.ai/inference');
-            
+
             // Check for API key from environment variables as fallback
             if ($openaiKey === '') {
                 $openaiKey = getenv('OPENAI_API_KEY') ?: getenv('GITHUB_MODELS_TOKEN') ?: getenv('GITHUB_TOKEN') ?: '';
             }
-            
+
             // Clean the API key - remove any hidden characters
             $openaiKey = preg_replace('/\s+/', '', $openaiKey);
-            
+
             if ($openaiKey === '') {
                 echo json_encode(['success' => false, 'error' => 'OpenAI API key not configured. Please add it in Settings > AI Settings, or set OPENAI_API_KEY environment variable.']);
                 exit;
             }
-            
+
             // Validate API key format (GitHub tokens are usually 40+ chars or start with ghp_)
             if (strlen($openaiKey) < 20 && substr($openaiKey, 0, 4) !== 'ghp_') {
                 echo json_encode(['success' => false, 'error' => 'API key appears invalid (too short). GitHub tokens are usually 40+ characters or start with "ghp_".']);
                 exit;
             }
-            
+
+            // Debug: Log key length and first few chars (for troubleshooting, remove in production)
+            // $keyPreview = substr($openaiKey, 0, 8) . '...' . substr($openaiKey, -4);
+            // error_log("AI Generation: Key length=" . strlen($openaiKey) . ", starts with: " . substr($openaiKey, 0, 4) . ", endpoint: " . $openaiEndpoint);
+
             $client = new OpenAIClient($openaiKey, $openaiModel, $openaiEndpoint);
             $result = $client->generateBlogContent($topic, $businessInfo);
         } catch (Throwable $e) {
@@ -137,10 +141,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action'])) {
         }
         if (!($result['success'] ?? false)) {
             $errorMsg = $result['error'] ?? 'AI generation failed';
-            // Provide more helpful error messages
-            if (strpos($errorMsg, '401') !== false || strpos($errorMsg, 'Unauthorized') !== false) {
+
+            // Preserve detailed error messages from API - don't overwrite with generic message
+            // The OpenAIClient already provides detailed 401 errors with API response details
+            // Only show generic message if the error doesn't contain useful details
+            if (
+                (strpos($errorMsg, '401') !== false || strpos($errorMsg, 'Unauthorized') !== false)
+                && strpos($errorMsg, 'API says:') === false
+                && strpos($errorMsg, 'Response:') === false
+                && strpos($errorMsg, 'Warning:') === false
+            ) {
+                // Generic fallback only if no details available
                 $errorMsg = 'Invalid API key. Please check your OpenAI API key in Settings > AI Settings and ensure it is correct.';
             }
+
             echo json_encode(['success' => false, 'error' => $errorMsg]);
             exit;
         }
