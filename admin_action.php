@@ -205,15 +205,23 @@ switch ($action) {
         ]);
 }
 
+// Set cache control headers
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
+header('Expires: 0');
+
 // Redirect back to appropriate page with message
 $redirect_url = BASE_URL . 'admin/';
 
 // Handle different redirects based on action
 if ($action === 'update') {
     $slug = $_POST['slug'] ?? '';
-    $redirect_url = BASE_URL . 'admin/edit-post?slug=' . urlencode($slug);
+    // Add cache-busting parameter to force reload
+    $cache_buster = '&_t=' . time();
+    $redirect_url = BASE_URL . 'admin/edit-post?slug=' . urlencode($slug) . $cache_buster;
 } elseif ($action === 'create') {
-    $redirect_url = BASE_URL . 'admin/';
+    // Add cache-busting parameter
+    $redirect_url = BASE_URL . 'admin/?_t=' . time();
 }
 
 if ($success_message) {
@@ -320,6 +328,11 @@ function handle_create_post()
 
     // Save post
     if (save_post($post_data)) {
+        // Force clear any opcache if enabled
+        if (function_exists('opcache_invalidate')) {
+            $post_file = CONTENT_DIR . 'posts/' . $slug . '.json';
+            opcache_invalidate($post_file, true);
+        }
         return ['success' => true];
     } else {
         return ['success' => false, 'error' => 'Failed to save post. Check file permissions.'];
@@ -431,6 +444,11 @@ function handle_update_post()
 
     // Save updated post
     if (save_post($existing_post)) {
+        // Force clear any opcache if enabled
+        if (function_exists('opcache_invalidate')) {
+            $post_file = CONTENT_DIR . 'posts/' . $existing_post['slug'] . '.json';
+            opcache_invalidate($post_file, true);
+        }
         return ['success' => true];
     } else {
         return ['success' => false, 'error' => 'Failed to update post. Check file permissions.'];

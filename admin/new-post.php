@@ -5,12 +5,22 @@
  */
 
 // Check if blog is installed
-if (!file_exists('../config.php')) {
+$config_path = file_exists(__DIR__ . '/../config.php') ? __DIR__ . '/../config.php' : '../config.php';
+if (!file_exists($config_path)) {
     header('Location: ../install.php');
     exit;
 }
 
-require_once '../functions.php';
+// Define constant to allow access
+define('ALLOW_DIRECT_ACCESS', true);
+
+try {
+    $functions_path = file_exists(__DIR__ . '/../functions.php') ? __DIR__ . '/../functions.php' : '../functions.php';
+    require_once $functions_path;
+} catch (Exception $e) {
+    error_log('Error loading functions.php: ' . $e->getMessage());
+    die('System error. Please try again later.');
+}
 require_once __DIR__ . '/../libs/SecurityHardener.php';
 
 // Initialize security system
@@ -30,12 +40,17 @@ if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== tru
 $success_message = '';
 $error_message = '';
 
+// Ensure CSRF token exists
+if (!isset($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
 // Handle success/error messages from URL parameters
 if (isset($_GET['success'])) {
-    $success_message = $_GET['success'];
+    $success_message = htmlspecialchars(urldecode($_GET['success']), ENT_QUOTES, 'UTF-8');
 }
 if (isset($_GET['error'])) {
-    $error_message = $_GET['error'];
+    $error_message = htmlspecialchars(urldecode($_GET['error']), ENT_QUOTES, 'UTF-8');
 }
 ?>
 
@@ -118,7 +133,8 @@ if (isset($_GET['error'])) {
                     <!-- Post Form -->
                     <form method="POST" action="<?php echo BASE_URL; ?>admin_action" enctype="multipart/form-data">
                         <input type="hidden" name="action" value="create">
-                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
+                        <input type="hidden" name="csrf_token"
+                            value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
 
                         <div class="row">
                             <div class="col-lg-8">
@@ -126,7 +142,9 @@ if (isset($_GET['error'])) {
                                 <div class="card mb-4">
                                     <div class="card-header d-flex justify-content-between align-items-center">
                                         <h5 class="mb-0">Post Content</h5>
-                                        <button style="background: linear-gradient(50deg, #c77dff 0%, #e0aaff 100%); color: white; border: 1px solid #c77dff" type="button" class="btn" data-bs-toggle="modal" data-bs-target="#aiModal">
+                                        <button
+                                            style="background: linear-gradient(50deg, #c77dff 0%, #e0aaff 100%); color: white; border: 1px solid #c77dff"
+                                            type="button" class="btn" data-bs-toggle="modal" data-bs-target="#aiModal">
                                             <i class="bi bi-stars"></i> Generate with AI
                                         </button>
                                     </div>
@@ -152,7 +170,8 @@ if (isset($_GET['error'])) {
 
                                         <div class="mb-3">
                                             <label for="content_type" class="form-label">Content Type</label>
-                                            <select class="form-select" id="content_type" name="content_type" onchange="toggleContentType()">
+                                            <select class="form-select" id="content_type" name="content_type"
+                                                onchange="toggleContentType()">
                                                 <option value="html" <?php echo ($content_type ?? 'html') === 'html' ? 'selected' : ''; ?>>HTML</option>
                                                 <option value="markdown" <?php echo ($content_type ?? 'html') === 'markdown' ? 'selected' : ''; ?>>Markdown</option>
                                             </select>
@@ -160,10 +179,12 @@ if (isset($_GET['error'])) {
 
                                         <div class="mb-3">
                                             <label for="content" class="form-label">Content *</label>
-                                            <textarea class="form-control" id="content" name="content" rows="15" required
+                                            <textarea class="form-control" id="content" name="content" rows="15"
+                                                required
                                                 placeholder="Write your post content..."><?php echo htmlspecialchars($content ?? ''); ?></textarea>
                                             <div class="form-text" id="content-help">
-                                                <strong>Markdown supported:</strong> Use **bold**, *italic*, `code`, [links](url), # headers, etc.
+                                                <strong>Markdown supported:</strong> Use **bold**, *italic*, `code`,
+                                                [links](url), # headers, etc.
                                             </div>
                                         </div>
                                     </div>
@@ -200,15 +221,18 @@ if (isset($_GET['error'])) {
 
                                         <div class="mb-3">
                                             <label for="updated" class="form-label">Last Edited Time</label>
-                                            <input type="datetime-local" class="form-control" id="updated" name="updated"
+                                            <input type="datetime-local" class="form-control" id="updated"
+                                                name="updated"
                                                 value="<?php echo htmlspecialchars(isset($date) ? date('Y-m-d\\TH:i', strtotime($date)) : date('Y-m-d\\TH:i')); ?>">
                                             <div class="form-text">Defaults to the publish time.</div>
                                         </div>
 
                                         <div class="mb-3">
                                             <label for="featured_image" class="form-label">Featured Image</label>
-                                            <input type="file" class="form-control" id="featured_image" name="featured_image" accept="image/*">
-                                            <div class="form-text">Upload a featured image for this post (JPG, PNG, GIF, WebP)</div>
+                                            <input type="file" class="form-control" id="featured_image"
+                                                name="featured_image" accept="image/*">
+                                            <div class="form-text">Upload a featured image for this post (JPG, PNG, GIF,
+                                                WebP)</div>
                                         </div>
                                     </div>
                                 </div>
@@ -253,25 +277,31 @@ if (isset($_GET['error'])) {
                     </form>
 
                     <!-- AI Modal -->
-                    <div class="modal fade" id="aiModal" tabindex="-1" aria-labelledby="aiModalLabel" aria-hidden="true">
+                    <div class="modal fade" id="aiModal" tabindex="-1" aria-labelledby="aiModalLabel"
+                        aria-hidden="true">
                         <div class="modal-dialog">
                             <div class="modal-content">
                                 <div class="modal-header">
-                                    <h5 class="modal-title" id="aiModalLabel"><i class="bi bi-stars"></i> Generate Blog with AI</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    <h5 class="modal-title" id="aiModalLabel"><i class="bi bi-stars"></i> Generate Blog
+                                        with AI</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                        aria-label="Close"></button>
                                 </div>
                                 <div class="modal-body">
                                     <div class="mb-3">
                                         <label for="ai_topic" class="form-label">Topic</label>
-                                        <input type="text" class="form-control" id="ai_topic" placeholder="e.g. Local SEO tips for dentists">
+                                        <input type="text" class="form-control" id="ai_topic"
+                                            placeholder="e.g. Local SEO tips for dentists">
                                         <div class="form-text">Describe the topic you want a blog about.</div>
                                     </div>
                                     <div id="ai_error" class="alert alert-danger d-none" role="alert"></div>
                                 </div>
                                 <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    <button type="button" class="btn btn-secondary"
+                                        data-bs-dismiss="modal">Close</button>
                                     <button type="button" id="ai_generate_btn" class="btn btn-primary">
-                                        <span class="spinner-border spinner-border-sm d-none" id="ai_spinner" role="status" aria-hidden="true"></span>
+                                        <span class="spinner-border spinner-border-sm d-none" id="ai_spinner"
+                                            role="status" aria-hidden="true"></span>
                                         <span id="ai_generate_text">Generate</span>
                                     </button>
                                 </div>
@@ -286,7 +316,7 @@ if (isset($_GET['error'])) {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // Auto-generate slug from title
-        document.getElementById('title').addEventListener('input', function() {
+        document.getElementById('title').addEventListener('input', function () {
             const title = this.value;
             const slug = title.toLowerCase()
                 .replace(/[^a-z0-9]+/g, '-')
@@ -311,7 +341,7 @@ if (isset($_GET['error'])) {
         document.addEventListener('DOMContentLoaded', toggleContentType);
 
         // AI Generate flow
-        (function() {
+        (function () {
             const btn = document.getElementById('ai_generate_btn');
             const spinner = document.getElementById('ai_spinner');
             const btnText = document.getElementById('ai_generate_text');
@@ -330,7 +360,7 @@ if (isset($_GET['error'])) {
                 }
             }
 
-            btn.addEventListener('click', async function() {
+            btn.addEventListener('click', async function () {
                 errorBox.classList.add('d-none');
                 errorBox.textContent = '';
                 const topic = (aiTopic.value || '').trim();

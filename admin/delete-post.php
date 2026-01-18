@@ -4,7 +4,23 @@
  * Delete Post
  */
 
-require_once '../functions.php';
+// Check if blog is installed
+$config_path = file_exists(__DIR__ . '/../config.php') ? __DIR__ . '/../config.php' : '../config.php';
+if (!file_exists($config_path)) {
+    header('Location: ../install.php');
+    exit;
+}
+
+// Define constant to allow access
+define('ALLOW_DIRECT_ACCESS', true);
+
+try {
+    $functions_path = file_exists(__DIR__ . '/../functions.php') ? __DIR__ . '/../functions.php' : '../functions.php';
+    require_once $functions_path;
+} catch (Exception $e) {
+    error_log('Error loading functions.php: ' . $e->getMessage());
+    die('System error. Please try again later.');
+}
 require_once __DIR__ . '/../libs/SecurityHardener.php';
 
 // Initialize security system
@@ -19,27 +35,43 @@ if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== tru
     exit;
 }
 
-// Get post slug
-$slug = $_GET['slug'] ?? '';
+// Ensure CSRF token exists
+if (!isset($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
+// Get post slug and sanitize
+$slug = trim($_GET['slug'] ?? '');
 if (empty($slug)) {
     header('Location: index');
     exit;
 }
+$slug = htmlspecialchars($slug, ENT_QUOTES, 'UTF-8');
 
 // Load post to get title for confirmation
 $post = get_post($slug);
 if (!$post) {
-    header('Location: index');
+    header('Location: index?error=Post+not+found');
     exit;
+}
+
+// Ensure CSRF token exists
+if (!isset($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
 // Handle deletion
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
-    if (delete_post($slug)) {
-        header('Location: index?success=Post+deleted+successfully!');
-        exit;
+    // Verify CSRF token
+    if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+        $error_message = "Invalid security token.";
     } else {
-        $error_message = "Failed to delete post.";
+        if (delete_post($slug)) {
+            header('Location: index?success=Post+deleted+successfully!');
+            exit;
+        } else {
+            $error_message = "Failed to delete post.";
+        }
     }
 }
 ?>
@@ -76,10 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
                         <a class="nav-link text-light" href="<?php echo BASE_URL; ?>admin/settings">
                             <i class="bi bi-gear"></i> Settings
                         </a>
-                        <a class="nav-link text-light" href="<?php echo BASE_URL; ?>admin/monitoring">
-                            <i class="bi bi-graph-up"></i> Monitoring
-                        </a>
-                        <a class="nav-link text-light" href="<?php echo BASE_URL; ?>admin/tools">
+                        <a class="nav-link text-light" href="<?php echo BASE_URL; ?>admin/admin-tools">
                             <i class="bi bi-tools"></i> Tools
                         </a>
                         <hr class="text-light">
@@ -130,7 +159,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
                                     <p class="text-muted">
                                         <strong>Slug:</strong> <?php echo htmlspecialchars($post['slug']); ?><br>
                                         <strong>Status:</strong> <?php echo ucfirst($post['status']); ?><br>
-                                        <strong>Created:</strong> <?php echo date('M j, Y g:i A', strtotime($post['date'])); ?>
+                                        <strong>Created:</strong>
+                                        <?php echo date('M j, Y g:i A', strtotime($post['date'])); ?>
                                     </p>
 
                                     <?php if (!empty($post['excerpt'])): ?>
@@ -139,6 +169,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
                                     <?php endif; ?>
 
                                     <form method="POST" class="mt-4">
+                                        <input type="hidden" name="csrf_token"
+                                            value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
                                         <div class="d-flex gap-2">
                                             <button type="submit" name="confirm_delete" class="btn btn-danger">
                                                 <i class="bi bi-trash"></i> Yes, Delete Post
