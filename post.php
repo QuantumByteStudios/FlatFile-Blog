@@ -189,10 +189,14 @@ $canonical_url = BASE_URL . urlencode($post['slug']);
 				<!-- Share Icons -->
 				<div class="mb-3 d-flex gap-3 align-items-center">
 					<a href="https://www.linkedin.com/sharing/share-offsite/?url=<?php echo urlencode($canonical_url); ?>&amp;title=<?php echo urlencode($post['title']); ?>"
-						class="text-dark" target="_blank" rel="noopener" title="Share on LinkedIn" style="line-height:1;">
-						<svg width="28" height="28" class="linkedin" viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg">
+						class="text-dark" target="_blank" rel="noopener" title="Share on LinkedIn"
+						style="line-height:1;">
+						<svg width="28" height="28" class="linkedin" viewBox="0 0 28 28"
+							xmlns="http://www.w3.org/2000/svg">
 							<g clip-path="url(#clip0_3302_57044)">
-								<path d="M24.889 0H3.11C2.7015 0 2.29701 0.0805 1.91962 0.2368C1.54224 0.3932 1.19935 0.6224 0.910544 0.9113C0.621741 1.2002 0.392681 1.5431 0.236448 1.9206C0.0802144 2.298 -0.000131188 2.7025 0 3.111V24.89C0 25.2985 0.0804758 25.703 0.23683 26.0804C0.393185 26.4578 0.622355 26.8007 0.911252 27.0895C1.20015 27.3783 1.54311 27.6073 1.92055 27.7636C2.29799 27.9198 2.70251 28.0001 3.111 28H24.89C25.2985 28 25.703 27.9195 26.0804 27.7632C26.4578 27.6068 26.8007 27.3776 27.0895 27.0887C27.3783 26.7999 27.6073 26.4569 27.7636 26.0795C27.9198 25.702 28.0001 25.2975 28 24.889V3.11C28 2.7015 27.9195 2.29701 27.7632 1.91962C27.6068 1.54224 27.3776 1.19935 27.0887 0.910544C26.7999 0.621741 26.4569 0.392681 26.0795 0.236448C25.702 0.0802144 25.2975 -0.000131188 24.889 0ZM9.333 21.778H5.41V10.888H9.334V21.778H9.333ZM7.302 8.893C6.102 8.893 5.302 8.093 5.302 7.026C5.302 5.959 6.1 5.16 7.433 5.16C8.633 5.16 9.433 5.96 9.433 7.026C9.433 8.094 8.633 8.893 7.301 8.893H7.302ZM23.333 21.778H19.535V15.826C19.535 14.18 18.522 13.801 18.142 13.801C17.762 13.801 16.497 14.054 16.497 15.826V21.778H12.572V10.888H16.497V12.408C17.002 11.522 18.015 10.888 19.914 10.888C21.814 10.888 23.334 12.408 23.334 15.826V21.778H23.333Z"></path>
+								<path
+									d="M24.889 0H3.11C2.7015 0 2.29701 0.0805 1.91962 0.2368C1.54224 0.3932 1.19935 0.6224 0.910544 0.9113C0.621741 1.2002 0.392681 1.5431 0.236448 1.9206C0.0802144 2.298 -0.000131188 2.7025 0 3.111V24.89C0 25.2985 0.0804758 25.703 0.23683 26.0804C0.393185 26.4578 0.622355 26.8007 0.911252 27.0895C1.20015 27.3783 1.54311 27.6073 1.92055 27.7636C2.29799 27.9198 2.70251 28.0001 3.111 28H24.89C25.2985 28 25.703 27.9195 26.0804 27.7632C26.4578 27.6068 26.8007 27.3776 27.0895 27.0887C27.3783 26.7999 27.6073 26.4569 27.7636 26.0795C27.9198 25.702 28.0001 25.2975 28 24.889V3.11C28 2.7015 27.9195 2.29701 27.7632 1.91962C27.6068 1.54224 27.3776 1.19935 27.0887 0.910544C26.7999 0.621741 26.4569 0.392681 26.0795 0.236448C25.702 0.0802144 25.2975 -0.000131188 24.889 0ZM9.333 21.778H5.41V10.888H9.334V21.778H9.333ZM7.302 8.893C6.102 8.893 5.302 8.093 5.302 7.026C5.302 5.959 6.1 5.16 7.433 5.16C8.633 5.16 9.433 5.96 9.433 7.026C9.433 8.094 8.633 8.893 7.301 8.893H7.302ZM23.333 21.778H19.535V15.826C19.535 14.18 18.522 13.801 18.142 13.801C17.762 13.801 16.497 14.054 16.497 15.826V21.778H12.572V10.888H16.497V12.408C17.002 11.522 18.015 10.888 19.914 10.888C21.814 10.888 23.334 12.408 23.334 15.826V21.778H23.333Z">
+								</path>
 							</g>
 							<defs>
 								<clipPath id="clip0_3302_57044">
@@ -205,12 +209,17 @@ $canonical_url = BASE_URL . urlencode($post['slug']);
 						class="text-dark" target="_blank" rel="noopener" title="Share on X" style="line-height:1;">
 						<svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
 							<rect width="28" height="28" rx="4" fill="#43414F"></rect>
-							<path d="M19.9222 4.66675H23.0741L16.1883 12.5742L24.2888 23.3334H17.9457L12.9779 16.8085L7.2928 23.3334H4.13916L11.504 14.8763L3.7334 4.66675H10.237L14.7275 10.6315L19.9222 4.66675ZM18.8157 21.4381H20.5627L9.28848 6.46302H7.41409L18.8157 21.4381Z" fill="white"></path>
+							<path
+								d="M19.9222 4.66675H23.0741L16.1883 12.5742L24.2888 23.3334H17.9457L12.9779 16.8085L7.2928 23.3334H4.13916L11.504 14.8763L3.7334 4.66675H10.237L14.7275 10.6315L19.9222 4.66675ZM18.8157 21.4381H20.5627L9.28848 6.46302H7.41409L18.8157 21.4381Z"
+								fill="white"></path>
 						</svg>
 					</a>
-					<span class="text-dark" title="Copy link" style="cursor:pointer;line-height:1;" onclick="navigator.clipboard.writeText('<?php echo $canonical_url; ?>'); this.firstElementChild.style.fill='#007bff'; this.title='Copied!'; setTimeout(()=>{this.firstElementChild.style.fill=''; this.title='Copy link';},1500);">
+					<span class="text-dark" title="Copy link" style="cursor:pointer;line-height:1;"
+						onclick="navigator.clipboard.writeText('<?php echo $canonical_url; ?>'); this.firstElementChild.style.fill='#007bff'; this.title='Copied!'; setTimeout(()=>{this.firstElementChild.style.fill=''; this.title='Copy link';},1500);">
 						<svg width="28" height="28" class="link" viewBox="0 0 28 14" xmlns="http://www.w3.org/2000/svg">
-							<path d="M6.364 0.5C2.85 0.5 0 3.41 0 7C0 10.59 2.85 13.5 6.364 13.5H11.454V10.9H6.364C4.254 10.9 2.545 9.154 2.545 7C2.545 4.846 4.255 3.1 6.364 3.1H11.454V0.5H6.364V0.5ZM16.545 0.5V3.1H21.636C23.746 3.1 25.455 4.846 25.455 7C25.455 9.154 23.745 10.9 21.636 10.9H16.546V13.5H21.636C25.15 13.5 28 10.59 28 7C28 3.41 25.15 0.5 21.636 0.5H16.546H16.545ZM7.636 5.7V8.3H20.364V5.7H7.636Z"></path>
+							<path
+								d="M6.364 0.5C2.85 0.5 0 3.41 0 7C0 10.59 2.85 13.5 6.364 13.5H11.454V10.9H6.364C4.254 10.9 2.545 9.154 2.545 7C2.545 4.846 4.255 3.1 6.364 3.1H11.454V0.5H6.364V0.5ZM16.545 0.5V3.1H21.636C23.746 3.1 25.455 4.846 25.455 7C25.455 9.154 23.745 10.9 21.636 10.9H16.546V13.5H21.636C25.15 13.5 28 10.59 28 7C28 3.41 25.15 0.5 21.636 0.5H16.546H16.545ZM7.636 5.7V8.3H20.364V5.7H7.636Z">
+							</path>
 						</svg>
 					</span>
 				</div>
@@ -225,8 +234,7 @@ $canonical_url = BASE_URL . urlencode($post['slug']);
 					<?php if (!empty($post['meta']['image'])): ?>
 						<div class="featured-image mb-4">
 							<img src="<?php echo htmlspecialchars($post['meta']['image']); ?>"
-								alt="<?php echo htmlspecialchars($post['title']); ?>"
-								class="img-fluid">
+								alt="<?php echo htmlspecialchars($post['title']); ?>" class="img-fluid">
 						</div>
 					<?php endif; ?>
 
@@ -262,8 +270,7 @@ $canonical_url = BASE_URL . urlencode($post['slug']);
 							<div class="mb-3">
 								Tags<br>
 								<?php foreach ($post['tags'] as $tag): ?>
-									<a href="<?php echo BASE_URL; ?>?tag=<?php echo urlencode($tag); ?>"
-										class="tag-badge">
+									<a href="<?php echo BASE_URL; ?>?tag=<?php echo urlencode($tag); ?>" class="tag-badge">
 										<?php echo htmlspecialchars($tag); ?>
 									</a>
 								<?php endforeach; ?>
@@ -312,14 +319,18 @@ $canonical_url = BASE_URL . urlencode($post['slug']);
 		<div class="container">
 			<div class="row">
 				<div class="col-12">
-					<span>&copy; <?php echo date('Y'); ?> <?php echo htmlspecialchars(SITE_TITLE); ?>. All rights reserved.</span>
+					<span>&copy; <?php echo date('Y'); ?> <?php echo htmlspecialchars($page_title); ?>. All rights
+						reserved.</span>
 					<br>
 					<span>
-						Powered by <a href="https://quantumbytestudios.in?ref=FlatFileBlogs" style="border-bottom: 1px solid #000;" class="text-dark text-decoration-none">QuantumByte Studios</a>
+						POWERED BY <a href="https://quantumbytestudios.in" style="border-bottom: 1px solid #000;"
+							class="text-dark text-decoration-none">QUANTUM BYTE STUDIOS</a>
 					</span>
 					<br>
 					<span>
-						<a href="mailto:<?php echo htmlspecialchars($settings['admin_email'] ?? (defined('ADMIN_EMAIL') ? ADMIN_EMAIL : '')); ?>" style="border-bottom: 1px solid #000;" class="text-dark text-decoration-none"><?php echo htmlspecialchars($settings['admin_email'] ?? (defined('ADMIN_EMAIL') ? ADMIN_EMAIL : '')); ?></a>
+						<a href="mailto:<?php echo htmlspecialchars($settings['admin_email']); ?>"
+							style="border-bottom: 1px solid #000;"
+							class="text-dark text-decoration-none"><?php echo htmlspecialchars($settings['admin_email']); ?></a>
 					</span>
 				</div>
 			</div>

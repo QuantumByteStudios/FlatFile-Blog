@@ -22,10 +22,16 @@ try {
     error_log('Error loading functions.php: ' . $e->getMessage());
     die('System error. Please try again later.');
 }
-require_once __DIR__ . '/../libs/SecurityHardener.php';
 
-// Initialize security system
-SecurityHardener::init();
+// Load SecurityHardener if available
+$security_hardener_path = __DIR__ . '/../libs/SecurityHardener.php';
+if (file_exists($security_hardener_path)) {
+    require_once $security_hardener_path;
+    // Initialize security system
+    if (class_exists('SecurityHardener')) {
+        SecurityHardener::init();
+    }
+}
 
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {

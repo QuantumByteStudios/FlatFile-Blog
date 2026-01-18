@@ -397,7 +397,7 @@ sort($all_authors);
             <div class="d-flex justify-content-between small">
                 <span>&copy; <?php echo date('Y'); ?> <?php echo htmlspecialchars($page_title); ?>. All rights reserved.</span>
                 <span>
-                    Powered by <a href="https://quantumbytestudios.in?ref=FlatFileBlogs" class="text-white text-decoration-underline">QuantumByte Studios</a>
+                    POWERED BY <a href="https://quantumbytestudios.in" class="text-white text-decoration-underline">QUANTUM BYTE STUDIOS</a>
                 </span>
             </div>
         </div>
