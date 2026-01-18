@@ -264,6 +264,7 @@ if (isset($_GET['error'])) {
                                             <label for="date" class="form-label">Publish Date/Time</label>
                                             <input type="datetime-local" class="form-control" id="date" name="date"
                                                 value="<?php echo htmlspecialchars(date('Y-m-d\\TH:i', strtotime($post['date']))); ?>">
+                                            <div class="form-text">Set a future date to schedule the post. Posts with future dates won't appear until that date.</div>
                                         </div>
 
                                         <div class="mb-3">
