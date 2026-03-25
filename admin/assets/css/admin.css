@@ -255,15 +255,7 @@ select {
 .badge {
     border-radius: 6px;
     font-weight: 500;
-    padding: 0.5rem 0.75rem;
-}
-
-.badge.bg-success {
-    background-color: #000 !important;
-}
-
-.badge.bg-warning {
-    background-color: #333 !important;
+    padding: 0.35rem 0.65rem;
 }
 
 /* Page Headers */
@@ -352,8 +344,79 @@ select {
     animation: fadeIn 0.5s ease-out;
 }
 
-/* Full post list on dashboard (scroll when many posts) */
-.admin-posts-list {
-    max-height: min(70vh, 56rem);
+/* All Posts page + dashboard recent list */
+.admin-posts-page {
+    overflow: hidden;
+}
+
+.admin-posts-page--compact {
+    max-height: min(55vh, 28rem);
     overflow-y: auto;
+}
+
+.admin-post-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem 1rem;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid #e9ecef;
+    background: #fff;
+}
+
+.admin-post-row:last-child {
+    border-bottom: none;
+}
+
+.admin-post-row:hover {
+    background: #fafbfc;
+}
+
+.admin-post-row__body {
+    flex: 1 1 14rem;
+    min-width: 0;
+}
+
+.admin-post-row__title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 1.35;
+    margin-bottom: 0.35rem;
+}
+
+.admin-post-row__title a {
+    color: #0d6efd;
+    text-decoration: none;
+    word-break: break-word;
+}
+
+.admin-post-row__title a:hover {
+    text-decoration: underline;
+}
+
+.admin-post-row__meta {
+    line-height: 1.4;
+}
+
+.admin-post-row__aside {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem 0.75rem;
+    flex-shrink: 0;
+}
+
+.admin-posts-page:not(.admin-posts-page--compact) {
+    max-height: min(75vh, 60rem);
+    overflow-y: auto;
+}
+
+@media (max-width: 575.98px) {
+    .admin-post-row__aside {
+        width: 100%;
+        justify-content: space-between;
+    }
 }

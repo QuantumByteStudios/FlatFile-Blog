@@ -20,6 +20,7 @@ RewriteRule ^admin/login/?$ admin/login.php [L,QSA]
 RewriteRule ^admin/logout/?$ admin/logout.php [L,QSA]
 RewriteRule ^admin/new-post/?$ admin/new-post.php [L,QSA]
 RewriteRule ^admin/edit-post/?$ admin/edit-post.php [L,QSA]
+RewriteRule ^admin/posts/?$ admin/posts.php [L,QSA]
 RewriteRule ^admin/settings/?$ admin/settings.php [L,QSA]
 
 # Full archive listing (must run before post slug catch-all)

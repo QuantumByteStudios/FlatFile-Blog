@@ -219,6 +219,9 @@ $last_update_time = $ui_settings['last_update_time'] ?? null;
                         <a class="nav-link text-light" href="<?php echo BASE_URL; ?>admin/">
                             <i class="bi bi-house"></i> Dashboard
                         </a>
+                        <a class="nav-link text-light" href="<?php echo BASE_URL; ?>admin/posts">
+                            <i class="bi bi-journal-text"></i> All Posts
+                        </a>
                         <a class="nav-link text-light" href="<?php echo BASE_URL; ?>admin/new-post">
                             <i class="bi bi-plus-circle"></i> New Post
                         </a>

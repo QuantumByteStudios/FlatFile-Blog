@@ -75,7 +75,8 @@ $total_posts = count($all_posts);
 $published_count = count($published_posts);
 $draft_count = count($draft_posts);
 
-// Sidebar “recent activity” preview only (newest three)
+// Dashboard: recent posts preview + sidebar activity
+$recent_posts = array_slice($all_posts, 0, 5);
 $recent_activity_posts = array_slice($all_posts, 0, 3);
 
 // Get posts by month for chart data
@@ -140,6 +141,9 @@ $csrf_token = function_exists('generate_csrf_token') ? generate_csrf_token() : (
                     <nav class="nav flex-column">
                         <a class="nav-link text-light active" href="<?php echo BASE_URL; ?>admin/">
                             <i class="bi bi-house"></i> Dashboard
+                        </a>
+                        <a class="nav-link text-light" href="<?php echo BASE_URL; ?>admin/posts">
+                            <i class="bi bi-journal-text"></i> All Posts
                         </a>
                         <a class="nav-link text-light" href="<?php echo BASE_URL; ?>admin/new-post">
                             <i class="bi bi-plus-circle"></i> New Post
@@ -259,62 +263,68 @@ $csrf_token = function_exists('generate_csrf_token') ? generate_csrf_token() : (
 
                     <!-- Dashboard Content -->
                     <div class="row g-4">
-                        <!-- All posts -->
+                        <!-- Recent posts -->
                         <div class="col-lg-8">
-                            <div class="bg-dark text-white p-3 rounded mb-4">
+                            <div class="bg-dark text-white p-3 rounded mb-4 d-flex flex-wrap justify-content-between align-items-center gap-2">
                                 <h5 class="mb-0 fw-semibold text-white">
-                                    <i class="bi bi-journal-text me-2"></i>All Posts
-                                    <span class="badge bg-secondary ms-2"><?php echo $total_posts; ?></span>
+                                    <i class="bi bi-clock-history me-2"></i>Recent Posts
                                 </h5>
+                                <a href="<?php echo BASE_URL; ?>admin/posts" class="btn btn-sm btn-outline-light">
+                                    View all posts<?php if ($total_posts > 0): ?> (<?php echo $total_posts; ?>)<?php endif; ?>
+                                </a>
                             </div>
-                            <div class="admin-posts-list border rounded bg-white">
-                                    <?php if (!empty($all_posts)): ?>
-                                        <div>
-                                            <?php foreach ($all_posts as $post): ?>
-                                            <div class="d-flex justify-content-between align-items-center py-3 border-bottom">
-                                                <div class="flex-grow-1 overflow-hidden" style="min-width:0;">
-                                                    <h6 class="mb-1 text-truncate">
+                            <div class="admin-posts-page admin-posts-page--compact border rounded bg-white shadow-sm">
+                                    <?php if (!empty($recent_posts)): ?>
+                                            <?php foreach ($recent_posts as $post):
+                                                $post_date = isset($post['date']) ? strtotime($post['date']) : 0;
+                                                $is_scheduled = ($post['status'] ?? '') === 'published' && $post_date > time();
+                                                if ($is_scheduled) {
+                                                    $pill_class = 'text-bg-info';
+                                                    $badge_text = 'Scheduled';
+                                                } elseif (($post['status'] ?? '') === 'published') {
+                                                    $pill_class = 'text-bg-success';
+                                                    $badge_text = 'Published';
+                                                } else {
+                                                    $pill_class = 'text-bg-warning';
+                                                    $badge_text = 'Draft';
+                                                }
+                                                $full_title = $post['title'] ?? '';
+                                                ?>
+                                            <article class="admin-post-row">
+                                                <div class="admin-post-row__body">
+                                                    <div class="admin-post-row__title">
                                                         <a href="<?php echo BASE_URL; ?><?php echo urlencode($post['slug']); ?>"
-                                                            class="text-decoration-none d-inline-block text-truncate w-100"
-                                                            target="_blank">
-                                                            <?php echo htmlspecialchars($post['title']); ?>
+                                                            target="_blank" rel="noopener"
+                                                            title="<?php echo htmlspecialchars($full_title); ?>">
+                                                            <?php echo htmlspecialchars($full_title); ?>
                                                         </a>
-                                                    </h6>
-                                                    <small class="text-muted">
-                                                        <?php echo date('M j, Y', strtotime($post['date'])); ?> •
-                                                        By <?php echo htmlspecialchars($post['author']); ?>
-                                                    </small>
+                                                    </div>
+                                                    <p class="admin-post-row__meta text-muted small mb-0">
+                                                        <?php echo date('M j, Y', strtotime($post['date'])); ?>
+                                                        <span class="mx-1">•</span>
+                                                        By <?php echo htmlspecialchars($post['author'] ?? 'Admin'); ?>
+                                                    </p>
                                                 </div>
-                                                <div class="ms-3 text-nowrap">
-                                                    <?php
-                                                    $post_date = isset($post['date']) ? strtotime($post['date']) : 0;
-                                                    $is_scheduled = $post['status'] === 'published' && $post_date > time();
-                                                    $badge_class = $is_scheduled ? 'info' : ($post['status'] === 'published' ? 'success' : 'warning');
-                                                    $badge_text = $is_scheduled ? 'Scheduled' : ucfirst($post['status']);
-                                                    ?>
-                                                    <span class="badge bg-<?php echo $badge_class; ?> me-2">
-                                                        <?php echo $badge_text; ?>
-                                                    </span>
+                                                <div class="admin-post-row__aside">
+                                                    <span class="badge rounded-pill <?php echo $pill_class; ?>"><?php echo htmlspecialchars($badge_text); ?></span>
                                                     <div class="btn-group" role="group">
                                                         <a href="<?php echo BASE_URL; ?><?php echo urlencode($post['slug']); ?>"
-                                                            class="btn btn-sm btn-outline-dark" target="_blank" title="View">
+                                                            class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener" title="View">
                                                             <i class="bi bi-eye"></i>
                                                         </a>
                                                         <a href="edit-post?slug=<?php echo htmlspecialchars(urlencode($post['slug']), ENT_QUOTES, 'UTF-8'); ?>"
-                                                            class="btn btn-sm btn-outline-dark" title="Edit">
+                                                            class="btn btn-sm btn-outline-secondary" title="Edit">
                                                             <i class="bi bi-pencil"></i>
                                                         </a>
                                                         <a href="delete-post?slug=<?php echo htmlspecialchars(urlencode($post['slug']), ENT_QUOTES, 'UTF-8'); ?>"
-                                                            class="btn btn-sm btn-outline-dark"
-                                                            onclick="return confirm('Are you sure you want to delete this post?')"
-                                                            title="Delete">
+                                                            class="btn btn-sm btn-outline-secondary"
+                                                            onclick="return confirm('Are you sure you want to delete this post?');" title="Delete">
                                                             <i class="bi bi-trash"></i>
                                                         </a>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        <?php endforeach; ?>
-                                    </div>
+                                            </article>
+                                            <?php endforeach; ?>
                                 <?php else: ?>
                                     <div class="text-center py-5">
                                         <i class="bi bi-file-text text-muted" style="font-size: 3rem;"></i>
