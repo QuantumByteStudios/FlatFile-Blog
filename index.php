@@ -63,7 +63,8 @@ $blogs_list_url = rtrim(BASE_URL, '/') . '/blogs';
                 <?php echo SITE_TITLE; ?>
             </a>
             <div class="ms-auto">
-                <a class="nav-link d-inline-block py-0 fw-semibold" href="<?php echo htmlspecialchars($blogs_list_url); ?>">All Blogs</a>
+                <a class="nav-link d-inline-block py-0 fw-semibold"
+                    href="<?php echo htmlspecialchars($blogs_list_url); ?>">All Blogs</a>
             </div>
         </div>
     </nav>
@@ -76,7 +77,8 @@ $blogs_list_url = rtrim(BASE_URL, '/') . '/blogs';
                     <i class="bi bi-journal-richtext"></i>
                     All Blogs
                 </h2>
-                <p class="text-muted mb-4">Every published post, newest first. Use the page links below to see older articles.</p>
+                <p class="text-muted mb-4">Every published post, newest first. Use the page links below to see older
+                    articles.</p>
 
                 <?php if (empty($posts)): ?>
                     <div class="alert py-5 mb-4">
@@ -103,8 +105,7 @@ $blogs_list_url = rtrim(BASE_URL, '/') . '/blogs';
                                     <?php if (!empty($post['meta']['image'])): ?>
                                         <div class="blog-card-image">
                                             <img src="<?php echo htmlspecialchars($post['meta']['image']); ?>"
-                                                alt="<?php echo htmlspecialchars($post['title']); ?>"
-                                                class="img-fluid">
+                                                alt="<?php echo htmlspecialchars($post['title']); ?>" class="img-fluid">
                                         </div>
                                     <?php endif; ?>
                                     <div class="card-body blog-card-body">
@@ -175,14 +176,18 @@ $blogs_list_url = rtrim(BASE_URL, '/') . '/blogs';
         <div class="container">
             <div class="row">
                 <div class="col-12">
-                    <span>&copy; <?php echo date('Y'); ?> <?php echo htmlspecialchars($page_title); ?>. All rights reserved.</span>
+                    <span>&copy; <?php echo date('Y'); ?> <?php echo htmlspecialchars($page_title); ?>. All rights
+                        reserved.</span>
                     <br>
                     <span>
-                        POWERED BY <a href="https://quantumbytestudios.in" style="border-bottom: 1px solid #000;" class="text-dark text-decoration-none">QUANTUM BYTE STUDIOS</a>
+                        POWERED BY <a href="https://quantumbytestudios.in" style="border-bottom: 1px solid #000;"
+                            class="text-dark text-decoration-none">QUANTUM BYTE STUDIOS</a>
                     </span>
                     <br>
                     <span>
-                        <a href="mailto:<?php echo htmlspecialchars($settings['admin_email']); ?>" style="border-bottom: 1px solid #000;" class="text-dark text-decoration-none"><?php echo htmlspecialchars($settings['admin_email']); ?></a>
+                        <a href="mailto:<?php echo htmlspecialchars($settings['admin_email']); ?>"
+                            style="border-bottom: 1px solid #000;"
+                            class="text-dark text-decoration-none"><?php echo htmlspecialchars($settings['admin_email']); ?></a>
                     </span>
                 </div>
             </div>

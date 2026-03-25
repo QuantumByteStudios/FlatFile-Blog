@@ -63,8 +63,8 @@ if (isset($_GET['error'])) {
 // Clear stat cache to ensure fresh data
 clearstatcache(true);
 
-// Load dashboard data (optimized - only get what we need)
-$all_posts = get_posts(1, 1000, 'all'); // Get all posts (published and drafts)
+// Load dashboard data — full list for admin (no per-page cap)
+$all_posts = all_posts();
 $published_posts = array_filter($all_posts, function ($post) {
     return ($post['status'] ?? '') === 'published';
 });
@@ -75,8 +75,8 @@ $total_posts = count($all_posts);
 $published_count = count($published_posts);
 $draft_count = count($draft_posts);
 
-// Get recent posts (last 5)
-$recent_posts = array_slice($all_posts, 0, 5);
+// Sidebar “recent activity” preview only (newest three)
+$recent_activity_posts = array_slice($all_posts, 0, 3);
 
 // Get posts by month for chart data
 $posts_by_month = [];
@@ -259,69 +259,69 @@ $csrf_token = function_exists('generate_csrf_token') ? generate_csrf_token() : (
 
                     <!-- Dashboard Content -->
                     <div class="row g-4">
-                        <!-- Recent Posts -->
+                        <!-- All posts -->
                         <div class="col-lg-8">
                             <div class="bg-dark text-white p-3 rounded mb-4">
                                 <h5 class="mb-0 fw-semibold text-white">
-                                    <i class="bi bi-clock-history me-2"></i>Recent Posts
+                                    <i class="bi bi-journal-text me-2"></i>All Posts
+                                    <span class="badge bg-secondary ms-2"><?php echo $total_posts; ?></span>
                                 </h5>
                             </div>
-                            <div>
-                                    <?php if (!empty($recent_posts)): ?>
+                            <div class="admin-posts-list border rounded bg-white">
+                                    <?php if (!empty($all_posts)): ?>
                                         <div>
-                                            <?php foreach ($recent_posts as $post): ?>
-                                                <div class="d-flex justify-content-between align-items-center py-3 border-bottom">
-                                                    <div class="flex-grow-1 overflow-hidden" style="min-width:0;">
-                                                        <h6 class="mb-1 text-truncate">
-                                                            <a href="<?php echo BASE_URL; ?><?php echo urlencode($post['slug']); ?>"
-                                                                class="text-decoration-none d-inline-block text-truncate w-100"
-                                                                target="_blank">
-                                                                <?php echo htmlspecialchars($post['title']); ?>
-                                                            </a>
-                                                        </h6>
-                                                        <small class="text-muted">
-                                                            <?php echo date('M j, Y', strtotime($post['date'])); ?> •
-                                                            By <?php echo htmlspecialchars($post['author']); ?>
-                                                        </small>
-                                                    </div>
-                                                    <div class="ms-3 text-nowrap">
-                                                        <?php
-                                                        $post_date = isset($post['date']) ? strtotime($post['date']) : 0;
-                                                        $is_scheduled = $post['status'] === 'published' && $post_date > time();
-                                                        $badge_class = $is_scheduled ? 'info' : ($post['status'] === 'published' ? 'success' : 'warning');
-                                                        $badge_text = $is_scheduled ? 'Scheduled' : ucfirst($post['status']);
-                                                        ?>
-                                                        <span class="badge bg-<?php echo $badge_class; ?> me-2">
-                                                            <?php echo $badge_text; ?>
-                                                        </span>
-                                                        <div class="btn-group" role="group">
-                                                            <a href="<?php echo BASE_URL; ?><?php echo urlencode($post['slug']); ?>"
-                                                                class="btn btn-sm btn-outline-dark" target="_blank"
-                                                                title="View">
-                                                                <i class="bi bi-eye"></i>
-                                                            </a>
-                                                            <a href="edit-post?slug=<?php echo htmlspecialchars(urlencode($post['slug']), ENT_QUOTES, 'UTF-8'); ?>"
-                                                                class="btn btn-sm btn-outline-dark" title="Edit">
-                                                                <i class="bi bi-pencil"></i>
-                                                            </a>
-                                                            <a href="delete-post?slug=<?php echo htmlspecialchars(urlencode($post['slug']), ENT_QUOTES, 'UTF-8'); ?>"
-                                                                class="btn btn-sm btn-outline-dark"
-                                                                onclick="return confirm('Are you sure you want to delete this post?')"
-                                                                title="Delete">
-                                                                <i class="bi bi-trash"></i>
-                                                            </a>
-                                                        </div>
+                                            <?php foreach ($all_posts as $post): ?>
+                                            <div class="d-flex justify-content-between align-items-center py-3 border-bottom">
+                                                <div class="flex-grow-1 overflow-hidden" style="min-width:0;">
+                                                    <h6 class="mb-1 text-truncate">
+                                                        <a href="<?php echo BASE_URL; ?><?php echo urlencode($post['slug']); ?>"
+                                                            class="text-decoration-none d-inline-block text-truncate w-100"
+                                                            target="_blank">
+                                                            <?php echo htmlspecialchars($post['title']); ?>
+                                                        </a>
+                                                    </h6>
+                                                    <small class="text-muted">
+                                                        <?php echo date('M j, Y', strtotime($post['date'])); ?> •
+                                                        By <?php echo htmlspecialchars($post['author']); ?>
+                                                    </small>
+                                                </div>
+                                                <div class="ms-3 text-nowrap">
+                                                    <?php
+                                                    $post_date = isset($post['date']) ? strtotime($post['date']) : 0;
+                                                    $is_scheduled = $post['status'] === 'published' && $post_date > time();
+                                                    $badge_class = $is_scheduled ? 'info' : ($post['status'] === 'published' ? 'success' : 'warning');
+                                                    $badge_text = $is_scheduled ? 'Scheduled' : ucfirst($post['status']);
+                                                    ?>
+                                                    <span class="badge bg-<?php echo $badge_class; ?> me-2">
+                                                        <?php echo $badge_text; ?>
+                                                    </span>
+                                                    <div class="btn-group" role="group">
+                                                        <a href="<?php echo BASE_URL; ?><?php echo urlencode($post['slug']); ?>"
+                                                            class="btn btn-sm btn-outline-dark" target="_blank" title="View">
+                                                            <i class="bi bi-eye"></i>
+                                                        </a>
+                                                        <a href="edit-post?slug=<?php echo htmlspecialchars(urlencode($post['slug']), ENT_QUOTES, 'UTF-8'); ?>"
+                                                            class="btn btn-sm btn-outline-dark" title="Edit">
+                                                            <i class="bi bi-pencil"></i>
+                                                        </a>
+                                                        <a href="delete-post?slug=<?php echo htmlspecialchars(urlencode($post['slug']), ENT_QUOTES, 'UTF-8'); ?>"
+                                                            class="btn btn-sm btn-outline-dark"
+                                                            onclick="return confirm('Are you sure you want to delete this post?')"
+                                                            title="Delete">
+                                                            <i class="bi bi-trash"></i>
+                                                        </a>
                                                     </div>
                                                 </div>
-                                            <?php endforeach; ?>
-                                        </div>
-                                    <?php else: ?>
-                                        <div class="text-center py-5">
-                                            <i class="bi bi-file-text text-muted" style="font-size: 3rem;"></i>
-                                            <p class="text-muted mt-3 mb-3">No posts yet</p>
-                                            <a href="new-post" class="btn btn-dark btn-sm">Create your first post</a>
-                                        </div>
-                                    <?php endif; ?>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="text-center py-5">
+                                        <i class="bi bi-file-text text-muted" style="font-size: 3rem;"></i>
+                                        <p class="text-muted mt-3 mb-3">No posts yet</p>
+                                        <a href="new-post" class="btn btn-dark btn-sm">Create your first post</a>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                         </div>
 
@@ -335,8 +335,8 @@ $csrf_token = function_exists('generate_csrf_token') ? generate_csrf_token() : (
                                     </h5>
                                 </div>
                                 <div>
-                                    <?php if (!empty($recent_posts)): ?>
-                                        <?php foreach (array_slice($recent_posts, 0, 3) as $post): ?>
+                                    <?php if (!empty($recent_activity_posts)): ?>
+                                        <?php foreach ($recent_activity_posts as $post): ?>
                                             <div class="d-flex align-items-center mb-3">
                                                 <div class="flex-shrink-0">
                                                     <?php

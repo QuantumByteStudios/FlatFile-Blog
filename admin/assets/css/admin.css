@@ -351,3 +351,9 @@ select {
 .fade-in {
     animation: fadeIn 0.5s ease-out;
 }
+
+/* Full post list on dashboard (scroll when many posts) */
+.admin-posts-list {
+    max-height: min(70vh, 56rem);
+    overflow-y: auto;
+}
