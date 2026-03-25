@@ -93,11 +93,12 @@ HealthChecker::addCheck('database_connectivity', function () {
 });
 
 HealthChecker::addCheck('uploads_directory', function () {
-    if (!is_dir(UPLOADS_DIR)) {
+    $uploads_dir = defined('UPLOADS_DIR') ? constant('UPLOADS_DIR') : __DIR__ . '/uploads/';
+    if (!is_dir($uploads_dir)) {
         return ['status' => 'warn', 'message' => 'Uploads directory not found'];
     }
 
-    if (!is_writable(UPLOADS_DIR)) {
+    if (!is_writable($uploads_dir)) {
         return ['status' => 'warn', 'message' => 'Uploads directory not writable'];
     }
 
