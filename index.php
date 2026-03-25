@@ -39,6 +39,7 @@ $pagination = get_pagination_info($total_posts, $per_page, $page);
 // Page title
 $page_title = $settings['site_title'] ?? 'FlatFile Blog';
 $site_description = $settings['site_description'] ?? 'A simple, fast, and secure flat-file blog system.';
+$blogs_list_url = rtrim(BASE_URL, '/') . '/blogs';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -61,6 +62,9 @@ $site_description = $settings['site_description'] ?? 'A simple, fast, and secure
             <a class="navbar-brand fw-bold" href="<?php echo BASE_URL; ?>">
                 <?php echo SITE_TITLE; ?>
             </a>
+            <div class="ms-auto">
+                <a class="nav-link d-inline-block py-0 fw-semibold" href="<?php echo htmlspecialchars($blogs_list_url); ?>">All Blogs</a>
+            </div>
         </div>
     </nav>
 
@@ -68,10 +72,11 @@ $site_description = $settings['site_description'] ?? 'A simple, fast, and secure
         <div class="row">
             <div class="col-lg-10 mx-auto">
 
-                <h2 class="mb-4 fw-bold display-6">
-                    <i class="bi bi-bookmarks-fill"></i>
-                    Latest Posts
+                <h2 class="mb-2 fw-bold display-6">
+                    <i class="bi bi-journal-richtext"></i>
+                    All Blogs
                 </h2>
+                <p class="text-muted mb-4">Every published post, newest first. Use the page links below to see older articles.</p>
 
                 <?php if (empty($posts)): ?>
                     <div class="alert py-5 mb-4">

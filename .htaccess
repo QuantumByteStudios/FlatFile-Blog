@@ -22,6 +22,9 @@ RewriteRule ^admin/new-post/?$ admin/new-post.php [L,QSA]
 RewriteRule ^admin/edit-post/?$ admin/edit-post.php [L,QSA]
 RewriteRule ^admin/settings/?$ admin/settings.php [L,QSA]
 
+# Full archive listing (must run before post slug catch-all)
+RewriteRule ^blogs/?$ index.php [L,QSA]
+
 # Check if the request is not a directory
 RewriteCond %{REQUEST_FILENAME} !-d
 

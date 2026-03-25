@@ -25,6 +25,7 @@ try {
 // Load settings for footer/contact info
 $settings = load_settings();
 $site_title = $settings['site_title'] ?? SITE_TITLE ?? 'FlatFile Blog';
+$blogs_list_url = rtrim(BASE_URL, '/') . '/blogs';
 
 // Get post slug from URL
 $slug = isset($_GET['slug']) ? trim($_GET['slug']) : '';
@@ -190,6 +191,9 @@ $canonical_url = BASE_URL . urlencode($post['slug']);
 			<a class="navbar-brand fw-bold" href="<?php echo BASE_URL; ?>">
 				<?php echo SITE_TITLE; ?>
 			</a>
+			<div class="ms-auto">
+				<a class="nav-link d-inline-block py-0 fw-semibold" href="<?php echo htmlspecialchars($blogs_list_url); ?>">All Blogs</a>
+			</div>
 		</div>
 	</nav>
 
@@ -315,8 +319,8 @@ $canonical_url = BASE_URL . urlencode($post['slug']);
 									<?php endif; ?>
 								</small>
 							</p>
-							<a href="<?php echo BASE_URL; ?>" class="btn btn-sm btn-outline-dark">
-								<i class="bi bi-arrow-left"></i> Back to All Posts
+							<a href="<?php echo htmlspecialchars($blogs_list_url); ?>" class="btn btn-sm btn-outline-dark">
+								<i class="bi bi-arrow-left"></i> Back to All Blogs
 							</a>
 						</div>
 					</div>
