@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * FlatFile Blog - Enhanced XML Sitemap
@@ -13,7 +14,9 @@ $posts = get_posts_by_status('published');
 // Set XML headers with caching
 header('Content-Type: application/xml; charset=utf-8');
 header('Cache-Control: public, max-age=3600'); // 1 hour cache
-header('Last-Modified: ' . gmdate('D, d M Y H:i:s', filemtime(CONTENT_DIR . 'index.json')) . ' GMT');
+$index_file = CONTENT_DIR . 'index.json';
+$last_modified_ts = file_exists($index_file) ? filemtime($index_file) : time();
+header('Last-Modified: ' . gmdate('D, d M Y H:i:s', $last_modified_ts) . ' GMT');
 
 // Generate XML sitemap
 echo '<?xml version="1.0" encoding="UTF-8"?>';
@@ -26,14 +29,6 @@ echo '<?xml version="1.0" encoding="UTF-8"?>';
         <lastmod><?php echo date('c'); ?></lastmod>
         <changefreq>daily</changefreq>
         <priority>1.0</priority>
-    </url>
-
-    <!-- Archive page -->
-    <url>
-        <loc><?php echo BASE_URL; ?>archive</loc>
-        <lastmod><?php echo date('c'); ?></lastmod>
-        <changefreq>weekly</changefreq>
-        <priority>0.7</priority>
     </url>
 
     <!-- RSS feed -->

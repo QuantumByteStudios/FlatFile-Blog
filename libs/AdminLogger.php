@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Admin Action Logger
  * Logs all admin actions for security and audit purposes

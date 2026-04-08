@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Parsedown - A Markdown Parser in PHP
  * Single-file version for our flat-file blog

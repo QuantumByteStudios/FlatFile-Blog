@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 class OpenAIClient
 {
@@ -125,48 +126,14 @@ class OpenAIClient
 		$decoded = json_decode($result, true);
 		if ($httpCode < 200 || $httpCode >= 300) {
 			if ($httpCode === 401) {
-				// Provide more detailed error info
 				$errorDetail = '';
 				if (is_array($decoded) && isset($decoded['error'])) {
 					$errorDetail = is_array($decoded['error']) ? ($decoded['error']['message'] ?? '') : (string) $decoded['error'];
 				}
-
-				// Get more info from raw response if available
-				$rawResponse = substr((string) $result, 0, 200);
-
-				// Check if API key looks valid (GitHub tokens usually start with ghp_ or are 40+ chars)
-				$keyLength = strlen($this->apiKey);
-				$keyPrefix = substr($this->apiKey, 0, 4);
-				$keyPreview = substr($this->apiKey, 0, 8) . '...' . substr($this->apiKey, -4);
-
 				$errorMsg = 'Unauthorized (401): Invalid or expired API key.';
 				if ($errorDetail) {
 					$errorMsg .= ' API says: ' . $errorDetail;
-				} elseif ($rawResponse && $rawResponse !== 'Unauthorized') {
-					$errorMsg .= ' Response: ' . $rawResponse;
 				}
-
-				$errorMsg .= "\n\nDiagnostic Info:";
-				$errorMsg .= "\n- Token length: " . $keyLength . " characters";
-				$errorMsg .= "\n- Token starts with: " . $keyPrefix;
-				$errorMsg .= "\n- Token preview: " . $keyPreview;
-				$errorMsg .= "\n- Endpoint: " . $this->endpoint . '/chat/completions';
-
-				if ($keyLength < 20) {
-					$errorMsg .= "\n- ⚠️ Warning: Token seems too short. GitHub tokens are usually 40+ characters.";
-				}
-
-				if ($keyPrefix !== 'ghp_' && $keyLength < 40) {
-					$errorMsg .= "\n- ⚠️ Warning: Token doesn't start with 'ghp_' and is shorter than expected.";
-				}
-
-				$errorMsg .= "\n\nTroubleshooting Steps:";
-				$errorMsg .= "\n1. Verify token is active: Go to GitHub Settings > Developer settings > Personal access tokens";
-				$errorMsg .= "\n2. Check token permissions: Token needs appropriate scopes (read:packages, etc.)";
-				$errorMsg .= "\n3. Regenerate token: Create a new token and update it in Settings > AI Settings";
-				$errorMsg .= "\n4. Verify no extra spaces: Copy token directly without spaces";
-				$errorMsg .= "\n5. Check endpoint: Should be 'https://models.github.ai/inference'";
-
 				return ['error' => $errorMsg];
 			}
 			if (is_array($decoded) && isset($decoded['error'])) {

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * FlatFile Blog - Single Post View

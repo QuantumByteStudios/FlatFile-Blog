@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * FlatFile Blog - Enhanced RSS Feed
@@ -27,7 +28,9 @@ $posts = get_posts(1, 20, 'published'); // Get first 20 published posts
 // Set RSS headers with caching
 header('Content-Type: application/rss+xml; charset=utf-8');
 header('Cache-Control: public, max-age=3600'); // 1 hour cache
-header('Last-Modified: ' . gmdate('D, d M Y H:i:s', filemtime(CONTENT_DIR . 'index.json')) . ' GMT');
+$index_file = CONTENT_DIR . 'index.json';
+$last_modified_ts = file_exists($index_file) ? filemtime($index_file) : time();
+header('Last-Modified: ' . gmdate('D, d M Y H:i:s', $last_modified_ts) . ' GMT');
 
 // Generate RSS XML
 echo '<?xml version="1.0" encoding="UTF-8"?>';

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 class SelfUpdater
 {
@@ -426,13 +427,13 @@ class SelfUpdater
                     return ['success' => false, 'error' => 'git remote add failed: ' . $add['stderr'], 'logs' => $logs];
                 }
             }
-            // Fetch and hard reset to origin/branch (leave untracked files alone)
+            // Fetch remote state
             $fetch = self::runProcess($git . ' fetch --prune origin', $root);
             $logs[] = $fetch;
             if ($fetch['code'] !== 0) {
                 return ['success' => false, 'error' => 'git fetch failed: ' . $fetch['stderr'], 'logs' => $logs];
             }
-            // Ensure branch exists locally, then reset
+            // Ensure branch exists locally
             $checkout = self::runProcess($git . ' checkout -B ' . escapeshellarg($branch) . ' --track origin/' . escapeshellarg($branch), $root);
             $logs[] = $checkout;
             if ($checkout['code'] !== 0) {
@@ -443,10 +444,11 @@ class SelfUpdater
                     return ['success' => false, 'error' => 'git checkout failed: ' . $checkout['stderr'], 'logs' => $logs];
                 }
             }
-            $reset = self::runProcess($git . ' reset --hard origin/' . escapeshellarg($branch), $root);
-            $logs[] = $reset;
-            if ($reset['code'] !== 0) {
-                return ['success' => false, 'error' => 'git reset failed: ' . $reset['stderr'], 'logs' => $logs];
+            // Fast-forward only to avoid destructive overwrite of local work
+            $ff = self::runProcess($git . ' merge --ff-only origin/' . escapeshellarg($branch), $root);
+            $logs[] = $ff;
+            if ($ff['code'] !== 0) {
+                return ['success' => false, 'error' => 'git fast-forward failed: local changes or divergence detected', 'logs' => $logs];
             }
             // Remove install.php if present after reset
             $installPath = $root . DIRECTORY_SEPARATOR . 'install.php';

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Admin Login
@@ -49,20 +50,37 @@ $error_message = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
+    $admin_username = defined('ADMIN_USERNAME') ? constant('ADMIN_USERNAME') : '';
+    $admin_password_hash = defined('ADMIN_PASSWORD_HASH') ? constant('ADMIN_PASSWORD_HASH') : '';
+    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+
+    if (class_exists('SecurityHardener')) {
+        $brute_force_check = SecurityHardener::checkBruteForce($ip, $username);
+        if (!empty($brute_force_check['blocked'])) {
+            $error_message = $brute_force_check['message'] ?? 'Too many login attempts. Please try again later.';
+        }
+    }
 
     // Basic input validation
-    if (empty($username) || empty($password)) {
+    if ($error_message === '' && (empty($username) || empty($password))) {
         $error_message = 'Username and password are required.';
-    } elseif (strlen($username) > 100) {
+    } elseif ($error_message === '' && strlen($username) > 100) {
         $error_message = 'Invalid username.';
-    } elseif ($username === ADMIN_USERNAME && password_verify($password, ADMIN_PASSWORD_HASH)) {
+    } elseif ($error_message === '' && $username === $admin_username && $admin_password_hash !== '' && password_verify($password, $admin_password_hash)) {
         $_SESSION['admin_logged_in'] = true;
+        $_SESSION['admin_username'] = $username;
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         $_SESSION['login_time'] = time();
         session_regenerate_id(true);
+        if (class_exists('SecurityHardener')) {
+            SecurityHardener::clearFailedAttempts($ip, $username);
+        }
         header('Location: ' . BASE_URL . 'admin/');
         exit;
-    } else {
+    } elseif ($error_message === '') {
+        if (class_exists('SecurityHardener')) {
+            SecurityHardener::recordFailedAttempt($ip, $username);
+        }
         // Don't reveal which field is wrong for security
         $error_message = 'Invalid username or password.';
     }

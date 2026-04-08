@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * FlatFile Blog - Backup System
@@ -12,6 +13,11 @@ class BlogBackup
     private static $backup_dir = __DIR__ . '/../backups/';
     private static $max_backups = 30; // Keep 30 days of backups
     private static $compression_level = 6; // ZIP compression level (1-9)
+
+    private static function uploads_dir()
+    {
+        return defined('UPLOADS_DIR') ? constant('UPLOADS_DIR') : (__DIR__ . '/../../uploads/');
+    }
 
     /**
      * Initialize backup system
@@ -44,8 +50,9 @@ class BlogBackup
             self::addDirectoryToZip($zip, CONTENT_DIR, 'content/');
 
             // Backup uploads directory
-            if (file_exists(UPLOADS_DIR)) {
-                self::addDirectoryToZip($zip, UPLOADS_DIR, 'uploads/');
+            $uploads_dir = self::uploads_dir();
+            if (file_exists($uploads_dir)) {
+                self::addDirectoryToZip($zip, $uploads_dir, 'uploads/');
             }
 
             // Backup configuration files
@@ -54,9 +61,7 @@ class BlogBackup
                 'functions.php',
                 'index.php',
                 'post.php',
-                'admin.php',
                 'admin_action.php',
-                'archive.php',
                 'rss.php',
                 'sitemap.php',
                 '.htaccess',
@@ -215,7 +220,7 @@ class BlogBackup
 
             // Restore uploads directory
             if (file_exists($temp_dir . '/uploads/')) {
-                self::copyDirectory($temp_dir . '/uploads/', UPLOADS_DIR);
+                self::copyDirectory($temp_dir . '/uploads/', self::uploads_dir());
             }
 
             // Restore configuration files
@@ -224,9 +229,7 @@ class BlogBackup
                 'functions.php',
                 'index.php',
                 'post.php',
-                'admin.php',
                 'admin_action.php',
-                'archive.php',
                 'rss.php',
                 'sitemap.php',
                 '.htaccess',

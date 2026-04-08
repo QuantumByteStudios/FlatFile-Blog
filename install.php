@@ -1,117 +1,5 @@
 <?php
-// Simple Installer (tiny, minimal)
-if (!file_exists('config.php')) {
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        $site_title = trim($_POST['site_title'] ?? 'My FlatFile Blog');
-        $admin_username = trim($_POST['admin_username'] ?? 'admin');
-        $admin_email = trim($_POST['admin_email'] ?? 'admin@example.com');
-        $admin_password = trim($_POST['admin_password'] ?? '');
-        $timezone = trim($_POST['timezone'] ?? 'UTC');
-        $scheme = ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443) || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')) ? 'https://' : 'http://';
-        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-        $dir = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
-        $base_url = trim($_POST['base_url'] ?? ($scheme . $host . ($dir ? $dir : '')), '/') . '/';
-        if ($admin_password === '') {
-            $admin_password = bin2hex(random_bytes(8));
-        }
-        foreach (['content', 'content/posts', 'uploads', 'uploads/featured', 'logs'] as $d) {
-            if (!is_dir($d)) {
-                @mkdir($d, 0755, true);
-            }
-        }
-        $cfg = "<?php\n" .
-            "define('SITE_TITLE', '" . addslashes($site_title) . "');\n" .
-            "define('BASE_URL', '" . addslashes($base_url) . "');\n" .
-            "define('ADMIN_USERNAME', '" . addslashes($admin_username) . "');\n" .
-            "define('ADMIN_EMAIL', '" . addslashes($admin_email) . "');\n" .
-            "define('TIMEZONE', '" . addslashes($timezone) . "');\n" .
-            "define('ADMIN_PASSWORD_HASH', '" . password_hash($admin_password, PASSWORD_DEFAULT) . "');\n" .
-            "define('CSRF_TOKEN_NAME', 'csrf_token');\n" .
-            "define('SESSION_TIMEOUT', 3600);\n" .
-            "define('CONTENT_DIR', __DIR__ . '/content/');\n" .
-            "define('POSTS_DIR', __DIR__ . '/content/posts/');\n" .
-            "define('UPLOADS_DIR', __DIR__ . '/uploads/');\n" .
-            "define('LOGS_DIR', __DIR__ . '/logs/');\n" .
-            "define('DEBUG_MODE', false);\n" .
-            "if (defined('TIMEZONE')) { date_default_timezone_set(TIMEZONE); }\n" .
-            "?>";
-        file_put_contents('config.php', $cfg);
-        $settings = ['site_title' => $site_title, 'site_description' => 'A simple, fast, and secure flat-file blog system.', 'admin_email' => $admin_email, 'timezone' => $timezone, 'posts_per_page' => 10];
-        file_put_contents('content/settings.json', json_encode($settings, JSON_PRETTY_PRINT));
-        if (!file_exists('content/index.json')) {
-            file_put_contents('content/index.json', json_encode([], JSON_PRETTY_PRINT));
-        }
-        header('Location: admin/');
-        exit;
-    }
-    ?>
-    <!DOCTYPE html>
-    <html lang="en">
-
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Install FlatFile Blog</title>
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    </head>
-
-    <body>
-        <div class="container py-5">
-            <div class="row justify-content-center">
-                <div class="col-md-8">
-                    <div class="card shadow">
-                        <div class="card-header bg-dark text-white text-center">
-                            <h1 class="h4 mb-0">FlatFile Blog — Quick Install</h1>
-                        </div>
-                        <div class="card-body">
-                            <form method="POST">
-                                <div class="row">
-                                    <div class="col-md-6 mb-3"><label class="form-label">Site Title</label><input
-                                            class="form-control" name="site_title" value="My FlatFile Blog" required></div>
-                                    <div class="col-md-6 mb-3"><label class="form-label">Admin Username</label><input
-                                            class="form-control" name="admin_username" placeholder="admin" required></div>
-                                </div>
-                                <div class="row">
-                                    <div class="col-md-6 mb-3"><label class="form-label">Admin Email</label><input
-                                            type="email" class="form-control" name="admin_email"
-                                            placeholder="admin@example.com" required></div>
-                                    <div class="col-md-6 mb-3"><label class="form-label">Timezone</label><select
-                                            class="form-select" name="timezone" required>
-                                            <option value="UTC">UTC</option>
-                                            <option value="America/New_York">Eastern Time (ET)</option>
-                                            <option value="America/Chicago">Central Time (CT)</option>
-                                            <option value="America/Denver">Mountain Time (MT)</option>
-                                            <option value="America/Los_Angeles">Pacific Time (PT)</option>
-                                            <option value="Europe/London">London (GMT)</option>
-                                            <option value="Europe/Paris">Paris (CET)</option>
-                                            <option value="Asia/Tokyo">Tokyo (JST)</option>
-                                            <option value="Asia/Shanghai">Shanghai (CST)</option>
-                                            <option value="Asia/Kolkata">Mumbai (IST)</option>
-                                            <option value="Australia/Sydney">Sydney (AEST)</option>
-                                        </select></div>
-                                </div>
-                                <div class="row">
-                                    <div class="col-md-6 mb-3"><label class="form-label">Admin Password</label><input
-                                            type="password" class="form-control" name="admin_password"
-                                            placeholder="leave blank to auto-generate"></div>
-                                    <div class="col-md-6 mb-3"><label class="form-label">Base URL</label><input
-                                            class="form-control" name="base_url"
-                                            value="<?php echo (((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443) || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')) ? 'https://' : 'http://') . ($_SERVER['HTTP_HOST'] ?? 'localhost') . rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\'); ?>">
-                                    </div>
-                                </div>
-                                <div class="d-grid"><button class="btn btn-dark btn-lg" type="submit">Install</button></div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </body>
-
-    </html>
-    <?php
-    exit;
-}
+declare(strict_types=1);
 
 /**
  * FlatFile Blog Installation Script
@@ -122,6 +10,13 @@ if (!file_exists('config.php')) {
 
 // Check if already installed
 $already_installed = file_exists('config.php') && file_exists('content/index.json');
+
+if ($already_installed && session_status() === PHP_SESSION_NONE) {
+    session_start();
+    if (!isset($_SESSION['install_csrf_token'])) {
+        $_SESSION['install_csrf_token'] = bin2hex(random_bytes(32));
+    }
+}
 
 // Set error reporting
 error_reporting(E_ALL);
@@ -147,52 +42,70 @@ function addError($error)
     $success = false;
 }
 
+function is_path_writable_for_create(string $path): bool
+{
+    if (file_exists($path)) {
+        return is_writable($path);
+    }
+    $parent_dir = dirname($path);
+    if ($parent_dir === '' || $parent_dir === '.') {
+        $parent_dir = __DIR__;
+    }
+    return is_dir($parent_dir) && is_writable($parent_dir);
+}
+
 // Handle reinstall action
 if (isset($_POST['action']) && $_POST['action'] === 'reinstall') {
-    // Delete existing files
-    $files_to_delete = [
-        'config.php',
-        'content/index.json',
-        'content/settings.json'
-    ];
+    if (!$already_installed || !isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
+        addError('Reinstall requires an authenticated admin session.');
+    } elseif (!isset($_POST['install_csrf_token'], $_SESSION['install_csrf_token']) || !hash_equals($_SESSION['install_csrf_token'], $_POST['install_csrf_token'])) {
+        addError('Invalid security token.');
+    } else {
+        // Delete existing files
+        $files_to_delete = [
+            'config.php',
+            'content/index.json',
+            'content/settings.json'
+        ];
 
-    $directories_to_delete = [
-        'content/posts',
-        'uploads/featured',
-        'logs'
-    ];
+        $directories_to_delete = [
+            'content/posts',
+            'uploads/featured',
+            'logs'
+        ];
 
-    foreach ($files_to_delete as $file) {
-        if (file_exists($file)) {
-            unlink($file);
-        }
-    }
-
-    foreach ($directories_to_delete as $dir) {
-        if (is_dir($dir)) {
-            $files = glob($dir . '/*');
-            foreach ($files as $file) {
-                if (is_file($file)) {
-                    unlink($file);
-                }
+        foreach ($files_to_delete as $file) {
+            if (file_exists($file)) {
+                unlink($file);
             }
-            rmdir($dir);
         }
-    }
 
-    // Remove empty directories
-    if (is_dir('content') && count(scandir('content')) == 2) {
-        rmdir('content');
-    }
-    if (is_dir('uploads') && count(scandir('uploads')) == 2) {
-        rmdir('uploads');
-    }
-    if (is_dir('logs') && count(scandir('logs')) == 2) {
-        rmdir('logs');
-    }
+        foreach ($directories_to_delete as $dir) {
+            if (is_dir($dir)) {
+                $files = glob($dir . '/*');
+                foreach ($files as $file) {
+                    if (is_file($file)) {
+                        unlink($file);
+                    }
+                }
+                rmdir($dir);
+            }
+        }
 
-    addStep("Removed existing installation files");
-    $already_installed = false;
+        // Remove empty directories
+        if (is_dir('content') && count(scandir('content')) == 2) {
+            rmdir('content');
+        }
+        if (is_dir('uploads') && count(scandir('uploads')) == 2) {
+            rmdir('uploads');
+        }
+        if (is_dir('logs') && count(scandir('logs')) == 2) {
+            rmdir('logs');
+        }
+
+        addStep("Removed existing installation files");
+        $already_installed = false;
+    }
 }
 
 // Check if form was submitted
@@ -244,7 +157,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['action'])) {
 
         foreach ($directories as $dir) {
             if (!file_exists($dir)) {
-                if (mkdir($dir, 0755, true)) {
+                if (!is_path_writable_for_create($dir)) {
+                    addError("No write permission for directory: $dir");
+                } elseif (@mkdir($dir, 0755, true)) {
                     addStep("Created directory: $dir");
                 } else {
                     addError("Failed to create directory: $dir");
@@ -329,7 +244,9 @@ if (!headers_sent()) {
 // Note: Direct access protection is handled by .htaccess file
 ?>";
 
-        if (file_put_contents('config.php', $config_content)) {
+        if (!is_path_writable_for_create('config.php')) {
+            addError("No write permission for config.php");
+        } elseif (@file_put_contents('config.php', $config_content)) {
             addStep("Created config.php");
         } else {
             addError("Failed to create config.php");
@@ -352,7 +269,9 @@ if (!headers_sent()) {
             'language' => 'en'
         ];
 
-        if (file_put_contents('content/settings.json', json_encode($settings, JSON_PRETTY_PRINT))) {
+        if (!is_path_writable_for_create('content/settings.json')) {
+            addError("No write permission for content/settings.json");
+        } elseif (@file_put_contents('content/settings.json', json_encode($settings, JSON_PRETTY_PRINT))) {
             addStep("Created settings file");
         } else {
             addError("Failed to create settings file");
@@ -361,7 +280,9 @@ if (!headers_sent()) {
         // Step 5: Create empty index.json
         $index_data = [];
 
-        if (file_put_contents('content/index.json', json_encode($index_data, JSON_PRETTY_PRINT))) {
+        if (!is_path_writable_for_create('content/index.json')) {
+            addError("No write permission for content/index.json");
+        } elseif (@file_put_contents('content/index.json', json_encode($index_data, JSON_PRETTY_PRINT))) {
             addStep("Created empty content index");
         } else {
             addError("Failed to create content index");
@@ -381,7 +302,9 @@ Allow: /uploads/featured/
 
 Sitemap: " . rtrim($base_url, '/') . "/sitemap";
 
-        if (file_put_contents('robots.txt', $robots_content)) {
+        if (!is_path_writable_for_create('robots.txt')) {
+            addError("No write permission for robots.txt");
+        } elseif (@file_put_contents('robots.txt', $robots_content)) {
             addStep("Created robots.txt");
         } else {
             addError("Failed to create robots.txt");
@@ -399,7 +322,7 @@ Sitemap: " . rtrim($base_url, '/') . "/sitemap";
 
             foreach ($files_to_chmod as $file => $permission) {
                 if (file_exists($file)) {
-                    if (chmod($file, $permission)) {
+                    if (@chmod($file, $permission)) {
                         addStep("Set permissions for $file");
                     } else {
                         addStep("Could not set permissions for $file (this is normal on some servers)", 'warning');
@@ -424,18 +347,41 @@ Sitemap: " . rtrim($base_url, '/') . "/sitemap";
     <title>Install - FlatFile Blog</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background: #f8f9fa;
+        }
+
+        .install-shell {
+            min-height: 100vh;
+            padding: 2.5rem 0;
+        }
+
+        .install-card {
+            border: 1px solid #e9ecef;
+            border-radius: 0.75rem;
+        }
+
+        .install-card .card-body {
+            padding: 1.5rem;
+        }
+
+        .install-actions {
+            margin-top: 1.25rem;
+        }
+    </style>
 </head>
 
 <body>
-    <div class="container">
-        <div class="row d-flex justify-content-center align-items-center vh-100">
-            <div class="col-md-8">
-                <div class="card shadow">
+    <div class="container install-shell">
+        <div class="row justify-content-center">
+            <div class="col-lg-9 col-xl-8">
+                <div class="card shadow-sm install-card">
                     <div class="card-body">
 
                         <?php if ($already_installed && $_SERVER['REQUEST_METHOD'] !== 'POST'): ?>
                             <!-- Already Installed Warning -->
-                            <div class="card border-0 p-5">
+                            <div class="p-4 p-md-5">
                                 <h2 class="text-danger mb-4">
                                     FlatFile Blog Already Installed!
                                 </h2>
@@ -448,6 +394,8 @@ Sitemap: " . rtrim($base_url, '/') . "/sitemap";
                                 </div>
                                 <form method="POST" class="d-inline">
                                     <input type="hidden" name="action" value="reinstall">
+                                    <input type="hidden" name="install_csrf_token"
+                                        value="<?php echo htmlspecialchars($_SESSION['install_csrf_token'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
                                     <button type="submit" class="btn btn-danger"
                                         onclick="return confirm('Are you sure you want to delete the existing installation? This action cannot be undone!')">
                                         <i class="bi bi-trash me-2"></i>
@@ -457,7 +405,7 @@ Sitemap: " . rtrim($base_url, '/') . "/sitemap";
                             </div>
                         <?php elseif ($_SERVER['REQUEST_METHOD'] === 'POST'): ?>
                             <!-- Installation Results -->
-                            <div class="card border-0 mb-4">
+                            <div class="mb-2">
                                 <!-- <div class="card-header bg-<?php echo $success ? 'success' : 'danger'; ?> text-white">
                                     <h5 class="mb-0">
                                         <i class="bi bi-<?php echo $success ? 'check-circle' : 'exclamation-triangle'; ?> me-2"></i>
@@ -572,7 +520,7 @@ Sitemap: " . rtrim($base_url, '/') . "/sitemap";
                                                 <option value="Europe/Paris">Paris (CET)</option>
                                                 <option value="Asia/Tokyo">Tokyo (JST)</option>
                                                 <option value="Asia/Shanghai">Shanghai (CST)</option>
-                                                <option value="Asia/Kolkata">Mumbai (IST)</option>
+                                                <option value="Asia/Kolkata" selected>Mumbai (IST)</option>
                                                 <option value="Australia/Sydney">Sydney (AEST)</option>
                                             </select>
                                             <div class="form-text">Your timezone</div>
@@ -633,7 +581,7 @@ Sitemap: " . rtrim($base_url, '/') . "/sitemap";
                                     </ul>
                                 </div>
 
-                                <div class="d-grid">
+                                <div class="d-grid install-actions">
                                     <button type="submit" class="btn btn-primary btn-lg">
                                         <i class="bi bi-download me-2"></i>Install FlatFile Blog
                                     </button>
@@ -644,26 +592,27 @@ Sitemap: " . rtrim($base_url, '/') . "/sitemap";
                 </div>
             </div>
         </div>
+    </div>
 
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-        <script>
-            // Form validation
-            (function () {
-                'use strict';
-                window.addEventListener('load', function () {
-                    var forms = document.getElementsByClassName('needs-validation');
-                    var validation = Array.prototype.filter.call(forms, function (form) {
-                        form.addEventListener('submit', function (event) {
-                            if (form.checkValidity() === false) {
-                                event.preventDefault();
-                                event.stopPropagation();
-                            }
-                            form.classList.add('was-validated');
-                        }, false);
-                    });
-                }, false);
-            })();
-        </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Form validation
+        (function () {
+            'use strict';
+            window.addEventListener('load', function () {
+                var forms = document.getElementsByClassName('needs-validation');
+                var validation = Array.prototype.filter.call(forms, function (form) {
+                    form.addEventListener('submit', function (event) {
+                        if (form.checkValidity() === false) {
+                            event.preventDefault();
+                            event.stopPropagation();
+                        }
+                        form.classList.add('was-validated');
+                    }, false);
+                });
+            }, false);
+        })();
+    </script>
 </body>
 
 </html>

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Secure Image Upload Handler
  * Handles image uploads with validation and security
@@ -14,6 +15,11 @@ class ImageUploader
     ];
     
     private static $maxFileSize = 5 * 1024 * 1024; // 5MB
+
+    private static function uploads_base_dir()
+    {
+        return defined('UPLOADS_DIR') ? constant('UPLOADS_DIR') : (__DIR__ . '/../uploads/');
+    }
     
     /**
      * Upload and process image
@@ -27,11 +33,15 @@ class ImageUploader
         }
         
         // Generate secure filename
-        $extension = self::$allowedTypes[$file['type']];
+        $mime_type = $validation['mime_type'] ?? '';
+        if (!isset(self::$allowedTypes[$mime_type])) {
+            return ['success' => false, 'error' => 'Unsupported image MIME type'];
+        }
+        $extension = self::$allowedTypes[$mime_type];
         $filename = self::generateSecureFilename($extension);
         
         // Create directory structure
-        $uploadDir = UPLOADS_DIR . $subfolder;
+        $uploadDir = rtrim(self::uploads_base_dir(), '/\\') . '/' . trim($subfolder, '/\\');
         if (!file_exists($uploadDir)) {
             mkdir($uploadDir, 0755, true);
         }
@@ -70,8 +80,11 @@ class ImageUploader
             return ['valid' => false, 'error' => 'File too large. Maximum size: ' . (self::$maxFileSize / 1024 / 1024) . 'MB'];
         }
         
-        // Check MIME type
-        if (!array_key_exists($file['type'], self::$allowedTypes)) {
+        // Check MIME type using file contents, not client-provided metadata
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime_type = finfo_file($finfo, $file['tmp_name']);
+        finfo_close($finfo);
+        if (!array_key_exists($mime_type, self::$allowedTypes)) {
             return ['valid' => false, 'error' => 'Invalid file type. Allowed: ' . implode(', ', array_keys(self::$allowedTypes))];
         }
         
@@ -86,7 +99,7 @@ class ImageUploader
             return ['valid' => false, 'error' => 'File contains suspicious content'];
         }
         
-        return ['valid' => true];
+        return ['valid' => true, 'mime_type' => $mime_type];
     }
     
     /**
@@ -244,7 +257,7 @@ class ImageUploader
      */
     public static function delete($filepath)
     {
-        $basePath = UPLOADS_DIR . $filepath;
+        $basePath = rtrim(self::uploads_base_dir(), '/\\') . '/' . ltrim($filepath, '/\\');
         $deleted = [];
         
         // Delete original

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * FlatFile Blog Functions
@@ -527,7 +528,9 @@ function delete_comment($slug, $comment_id)
  */
 function is_logged_in()
 {
-    session_start();
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
     return isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true;
 }
 
@@ -542,7 +545,9 @@ function login_user($username, $password)
     $admin_username = constant('ADMIN_USERNAME');
     $admin_password_hash = constant('ADMIN_PASSWORD_HASH');
     if ($username === $admin_username && password_verify($password, $admin_password_hash)) {
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
         $_SESSION['admin_logged_in'] = true;
         $_SESSION['admin_username'] = $username;
         $_SESSION['login_time'] = time();
@@ -556,7 +561,9 @@ function login_user($username, $password)
  */
 function logout_user()
 {
-    session_start();
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
     session_destroy();
 }
 
@@ -569,7 +576,9 @@ function check_session_timeout()
         return false;
     }
 
-    session_start();
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
     $timeout = defined('SESSION_TIMEOUT') ? constant('SESSION_TIMEOUT') : 3600; // Default 1 hour
     if (isset($_SESSION['login_time']) && (time() - $_SESSION['login_time']) > $timeout) {
         logout_user();
@@ -752,6 +761,9 @@ function get_admin_url($page = '')
  */
 function redirect_with_message($url, $message, $type = 'info')
 {
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
     $_SESSION['flash_message'] = $message;
     $_SESSION['flash_type'] = $type;
     header('Location: ' . $url);

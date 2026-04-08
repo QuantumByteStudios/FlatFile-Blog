@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Edit Post
@@ -174,7 +175,6 @@ if (isset($_GET['error'])) {
                         <input type="hidden" name="action" value="update">
                         <input type="hidden" name="original_slug"
                             value="<?php echo htmlspecialchars($post['slug']); ?>">
-                        <input type="hidden" name="slug" value="<?php echo htmlspecialchars($post['slug']); ?>">
                         <input type="hidden" name="csrf_token"
                             value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
 

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * FlatFile Blog - Admin Actions
@@ -48,7 +49,7 @@ if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== tru
 // Security checks (only if SecurityHardener is available)
 if (class_exists('SecurityHardener')) {
     $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-    $username = $_SESSION['username'] ?? 'unknown';
+    $username = $_SESSION['admin_username'] ?? 'unknown';
 
     // Check brute force protection
     $brute_force_check = SecurityHardener::checkBruteForce($ip, $username);
@@ -106,6 +107,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action'])) {
         $businessInfo = trim($settings['business_info'] ?? '');
 
         try {
+            if (!class_exists('OpenAIClient')) {
+                echo json_encode(['success' => false, 'error' => 'AI client is unavailable on this server.']);
+                exit;
+            }
             $openaiKey = trim($settings['openai_api_key'] ?? '');
             $openaiModel = trim($settings['openai_model'] ?? 'openai/gpt-4o-mini');
             $openaiEndpoint = trim($settings['openai_endpoint'] ?? 'https://models.github.ai/inference');
@@ -174,7 +179,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action'])) {
 
 // Verify CSRF token for POST requests
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+    if (!isset($_SESSION['csrf_token'], $_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
         header('HTTP/1.0 403 Forbidden');
         die('Invalid security token.');
     }
@@ -189,16 +194,20 @@ switch ($action) {
         $result = handle_create_post();
         if ($result['success']) {
             $success_message = 'Post created successfully!';
-            AdminLogger::log('post_created', [
-                'slug' => $result['slug'] ?? 'unknown',
-                'title' => $_POST['title'] ?? 'unknown'
-            ]);
+            if (class_exists('AdminLogger')) {
+                AdminLogger::log('post_created', [
+                    'slug' => $result['slug'] ?? 'unknown',
+                    'title' => $_POST['title'] ?? 'unknown'
+                ]);
+            }
         } else {
             $error_message = $result['error'];
-            AdminLogger::log('post_create_failed', [
-                'error' => $result['error'],
-                'title' => $_POST['title'] ?? 'unknown'
-            ]);
+            if (class_exists('AdminLogger')) {
+                AdminLogger::log('post_create_failed', [
+                    'error' => $result['error'],
+                    'title' => $_POST['title'] ?? 'unknown'
+                ]);
+            }
         }
         break;
 
@@ -206,16 +215,20 @@ switch ($action) {
         $result = handle_update_post();
         if ($result['success']) {
             $success_message = 'Post updated successfully!';
-            AdminLogger::log('post_updated', [
-                'slug' => $_POST['slug'] ?? 'unknown',
-                'title' => $_POST['title'] ?? 'unknown'
-            ]);
+            if (class_exists('AdminLogger')) {
+                AdminLogger::log('post_updated', [
+                    'slug' => $_POST['slug'] ?? 'unknown',
+                    'title' => $_POST['title'] ?? 'unknown'
+                ]);
+            }
         } else {
             $error_message = $result['error'];
-            AdminLogger::log('post_update_failed', [
-                'error' => $result['error'],
-                'slug' => $_POST['slug'] ?? 'unknown'
-            ]);
+            if (class_exists('AdminLogger')) {
+                AdminLogger::log('post_update_failed', [
+                    'error' => $result['error'],
+                    'slug' => $_POST['slug'] ?? 'unknown'
+                ]);
+            }
         }
         break;
 
@@ -223,15 +236,19 @@ switch ($action) {
         $result = handle_delete_post();
         if ($result['success']) {
             $success_message = 'Post deleted successfully!';
-            AdminLogger::log('post_deleted', [
-                'slug' => $_POST['slug'] ?? 'unknown'
-            ]);
+            if (class_exists('AdminLogger')) {
+                AdminLogger::log('post_deleted', [
+                    'slug' => $_POST['slug'] ?? 'unknown'
+                ]);
+            }
         } else {
             $error_message = $result['error'];
-            AdminLogger::log('post_delete_failed', [
-                'error' => $result['error'],
-                'slug' => $_POST['slug'] ?? 'unknown'
-            ]);
+            if (class_exists('AdminLogger')) {
+                AdminLogger::log('post_delete_failed', [
+                    'error' => $result['error'],
+                    'slug' => $_POST['slug'] ?? 'unknown'
+                ]);
+            }
         }
         break;
 
@@ -239,28 +256,38 @@ switch ($action) {
         $install_path = __DIR__ . '/install.php';
         if (!file_exists($install_path)) {
             $error_message = 'install.php was not found.';
-            AdminLogger::log('install_delete_missing', []);
+            if (class_exists('AdminLogger')) {
+                AdminLogger::log('install_delete_missing', []);
+            }
             break;
         }
         if (!is_writable($install_path)) {
             $error_message = 'install.php is not writable. Delete manually.';
-            AdminLogger::log('install_delete_not_writable', []);
+            if (class_exists('AdminLogger')) {
+                AdminLogger::log('install_delete_not_writable', []);
+            }
             break;
         }
         if (@unlink($install_path)) {
             $success_message = 'install.php deleted successfully.';
-            AdminLogger::log('install_deleted', []);
+            if (class_exists('AdminLogger')) {
+                AdminLogger::log('install_deleted', []);
+            }
         } else {
             $error_message = 'Failed to delete install.php. Check permissions.';
-            AdminLogger::log('install_delete_failed', []);
+            if (class_exists('AdminLogger')) {
+                AdminLogger::log('install_delete_failed', []);
+            }
         }
         break;
 
     default:
         $error_message = 'Invalid action.';
-        AdminLogger::log('invalid_action', [
-            'action' => $action
-        ]);
+        if (class_exists('AdminLogger')) {
+            AdminLogger::log('invalid_action', [
+                'action' => $action
+            ]);
+        }
 }
 
 // Set cache control headers
@@ -315,6 +342,9 @@ function handle_create_post()
     } else {
         $slug = slugify($slug);
     }
+    if (!is_valid_slug($slug)) {
+        return ['success' => false, 'error' => 'Invalid slug format. Use only letters, numbers, and hyphens.'];
+    }
 
     // Check if slug already exists
     if (load_post($slug)) {
@@ -349,6 +379,9 @@ function handle_create_post()
     // Handle featured image upload
     $featured_image = '';
     if (isset($_FILES['featured_image']) && $_FILES['featured_image']['error'] === UPLOAD_ERR_OK) {
+        if (!class_exists('ImageUploader')) {
+            return ['success' => false, 'error' => 'Image upload service is unavailable.'];
+        }
         $upload_result = ImageUploader::upload($_FILES['featured_image'], 'featured');
         if ($upload_result['success']) {
             $featured_image = $upload_result['url'];
@@ -409,6 +442,9 @@ function handle_update_post()
     if (empty($original_slug)) {
         return ['success' => false, 'error' => 'Original post slug is required.'];
     }
+    if (!is_valid_slug($original_slug)) {
+        return ['success' => false, 'error' => 'Invalid original slug format.'];
+    }
 
     // Load existing post
     $existing_post = load_post($original_slug);
@@ -436,6 +472,9 @@ function handle_update_post()
     // If slug field was changed, ensure uniqueness and rename the file
     if (!empty($slug) && $slug !== $original_slug) {
         $new_slug = slugify($slug);
+        if (!is_valid_slug($new_slug)) {
+            return ['success' => false, 'error' => 'Invalid slug format. Use only letters, numbers, and hyphens.'];
+        }
         if ($new_slug !== $original_slug) {
             // If target slug exists, make it unique
             if (load_post($new_slug)) {
@@ -494,6 +533,9 @@ function handle_update_post()
 
     // Handle featured image upload
     if (isset($_FILES['featured_image']) && $_FILES['featured_image']['error'] === UPLOAD_ERR_OK) {
+        if (!class_exists('ImageUploader')) {
+            return ['success' => false, 'error' => 'Image upload service is unavailable.'];
+        }
         $upload_result = ImageUploader::upload($_FILES['featured_image'], 'featured');
         if ($upload_result['success']) {
             $existing_post['meta']['image'] = $upload_result['url'];
@@ -523,6 +565,9 @@ function handle_delete_post()
     if (empty($slug)) {
         return ['success' => false, 'error' => 'Post slug is required.'];
     }
+    if (!is_valid_slug($slug)) {
+        return ['success' => false, 'error' => 'Invalid slug format.'];
+    }
 
     // Check if post exists
     if (!load_post($slug)) {
@@ -535,4 +580,9 @@ function handle_delete_post()
     } else {
         return ['success' => false, 'error' => 'Failed to delete post. Check file permissions.'];
     }
+}
+
+function is_valid_slug($slug)
+{
+    return is_string($slug) && preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $slug);
 }

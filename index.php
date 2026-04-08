@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * FlatFile Blog - Homepage
@@ -71,7 +72,7 @@ $blogs_list_url = rtrim(BASE_URL, '/') . '/blogs';
 
     <div class="container my-5">
         <div class="row">
-            <div class="col-lg-10 mx-auto">
+            <div class="col-lg-12 mx-auto">
 
                 <h2 class="mb-2 fw-bold display-6">
                     <i class="bi bi-journal-richtext"></i>
@@ -81,7 +82,7 @@ $blogs_list_url = rtrim(BASE_URL, '/') . '/blogs';
                     articles.</p>
 
                 <?php if (empty($posts)): ?>
-                    <div class="alert py-5 mb-4">
+                    <div class="alert py-5 px-0 mb-4">
                         <h4>No posts yet.</h4>
                     </div>
                 <?php else: ?>

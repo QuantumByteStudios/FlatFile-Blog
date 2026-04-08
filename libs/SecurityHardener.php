@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Security Hardener
@@ -30,9 +31,6 @@ class SecurityHardener
             ini_set('session.use_strict_mode', 1);
             ini_set('session.cookie_samesite', 'Strict');
         }
-
-        // Disable dangerous functions
-        self::disableDangerousFunctions();
 
         // Set security headers
         self::setSecurityHeaders();
@@ -285,30 +283,9 @@ class SecurityHardener
      */
     private static function disableDangerousFunctions()
     {
-        $dangerous_functions = [
-            'exec',
-            'system',
-            'shell_exec',
-            'passthru',
-            'eval',
-            'assert',
-            'create_function',
-            'file_get_contents',
-            'file_put_contents',
-            'fopen',
-            'fwrite',
-            'include',
-            'include_once',
-            'require',
-            'require_once'
-        ];
-
-        foreach ($dangerous_functions as $func) {
-            if (function_exists($func)) {
-                // Log attempt to use dangerous function
-                error_log("Attempted use of dangerous function: {$func}");
-            }
-        }
+        // Kept for backward compatibility with older code paths.
+        // Dangerous function restrictions must be configured at server/php.ini level.
+        return;
     }
 
     /**
