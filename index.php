@@ -27,6 +27,33 @@ try {
 
 // Load settings
 $settings = load_settings();
+$interface_mode = defined('INTERFACE_MODE') ? (string) constant('INTERFACE_MODE') : ($settings['interface_mode'] ?? 'classic');
+
+if ($interface_mode === 'custom') {
+    http_response_code(404);
+    header('Content-Type: text/html; charset=utf-8');
+    ?>
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Custom Interface Mode Enabled</title>
+    </head>
+    <body>
+        <h1>Custom Interface Mode Enabled</h1>
+        <p>The built-in public listing page is disabled.</p>
+        <p>Use the admin panel to manage posts and build your own frontend pages.</p>
+        <p>
+            <a href="<?php echo htmlspecialchars(BASE_URL . 'admin/', ENT_QUOTES, 'UTF-8'); ?>">
+                Open Admin Panel
+            </a>
+        </p>
+    </body>
+    </html>
+    <?php
+    exit;
+}
 
 // Get pagination parameters
 $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;

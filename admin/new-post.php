@@ -76,10 +76,10 @@ if (isset($_GET['error'])) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <link href="<?php echo BASE_URL; ?>assets/css/main.css" rel="stylesheet">
-    <link href="assets/css/admin.css" rel="stylesheet">
+    <link href="<?php echo BASE_URL; ?>admin/assets/css/admin.css" rel="stylesheet">
 </head>
 
-<body class="bg-light">
+<body class="bg-light" data-base-url="<?php echo htmlspecialchars(BASE_URL, ENT_QUOTES, 'UTF-8'); ?>">
     <div class="container-fluid">
         <div class="row">
             <!-- Sidebar -->
@@ -331,131 +331,7 @@ if (isset($_GET['error'])) {
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Auto-generate slug from title
-        document.getElementById('title').addEventListener('input', function () {
-            const title = this.value;
-            const slug = title.toLowerCase()
-                .replace(/[^a-z0-9]+/g, '-')
-                .replace(/^-+|-+$/g, '');
-            document.getElementById('slug').value = slug;
-        });
-
-        // Toggle content type help text
-        function toggleContentType() {
-            const contentType = document.getElementById('content_type').value;
-            const contentHelp = document.getElementById('content-help');
-            const contentTextarea = document.getElementById('content');
-
-            if (contentType === 'html') {
-                contentHelp.innerHTML = '<strong>HTML supported:</strong> Use only &lt;b&gt;, &lt;i&gt;, &lt;u&gt;, &lt;br&gt;.';
-                contentTextarea.placeholder = 'Write your post content in HTML...';
-            } else {
-                contentHelp.innerHTML = '<strong>Markdown supported:</strong> Use **bold**, *italic*, `code`, [links](url), # headers, etc.';
-                contentTextarea.placeholder = 'Write your post content in Markdown...';
-            }
-        }
-        document.addEventListener('DOMContentLoaded', toggleContentType);
-
-        // AI Generate flow
-        (function () {
-            const btn = document.getElementById('ai_generate_btn');
-            const spinner = document.getElementById('ai_spinner');
-            const btnText = document.getElementById('ai_generate_text');
-            const errorBox = document.getElementById('ai_error');
-            const aiTopic = document.getElementById('ai_topic');
-
-            function setLoading(isLoading) {
-                if (isLoading) {
-                    spinner.classList.remove('d-none');
-                    btnText.textContent = 'Generating…';
-                    btn.disabled = true;
-                } else {
-                    spinner.classList.add('d-none');
-                    btnText.textContent = 'Generate';
-                    btn.disabled = false;
-                }
-            }
-
-            btn.addEventListener('click', async function () {
-                errorBox.classList.add('d-none');
-                errorBox.textContent = '';
-                const topic = (aiTopic.value || '').trim();
-                if (!topic) {
-                    errorBox.textContent = 'Please enter a topic.';
-                    errorBox.classList.remove('d-none');
-                    return;
-                }
-                setLoading(true);
-                try {
-                    const url = '<?php echo BASE_URL; ?>admin_action?action=generate_ai_post&topic=' + encodeURIComponent(topic);
-                    const resp = await fetch(url, {
-                        method: 'GET',
-                        headers: {
-                            'Accept': 'application/json'
-                        },
-                        credentials: 'same-origin'
-                    });
-
-                    // Read raw response text first for better debugging
-                    const rawText = await resp.text();
-                    let data;
-                    try {
-                        data = rawText ? JSON.parse(rawText) : null;
-                    } catch (parseErr) {
-                        // Log detailed info for debugging
-                        try {
-                            const headersObj = {};
-                            resp.headers.forEach((v, k) => headersObj[k] = v);
-                            console.error('AI generate: Failed to parse JSON.', {
-                                url,
-                                status: resp.status,
-                                ok: resp.ok,
-                                headers: headersObj,
-                                body: rawText
-                            });
-                        } catch (_) {
-                            console.error('AI generate: Failed to parse JSON. Raw body:', rawText);
-                        }
-                        throw new Error('Failed to parse AI response');
-                    }
-
-                    if (!data.success) {
-                        console.error('AI generate: Server returned error payload:', data);
-                        throw new Error(data.error || 'Generation failed');
-                    }
-                    // Populate fields
-                    document.getElementById('title').value = data.title || '';
-                    document.getElementById('excerpt').value = data.excerpt || '';
-                    const tagsField = document.getElementById('tags');
-                    if (Array.isArray(data.tags)) {
-                        tagsField.value = data.tags.join(', ');
-                    }
-                    const catsField = document.getElementById('categories');
-                    if (Array.isArray(data.categories)) {
-                        catsField.value = data.categories.join(', ');
-                    }
-                    if (data.slug) {
-                        document.getElementById('slug').value = data.slug;
-                    }
-                    document.getElementById('content_type').value = 'html';
-                    toggleContentType();
-                    document.getElementById('content').value = data.content_html || '';
-
-                    // Close modal
-                    const modalEl = document.getElementById('aiModal');
-                    const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
-                    modal.hide();
-                } catch (e) {
-                    console.error('AI generate: Request failed.', e);
-                    errorBox.textContent = e.message || 'Generation error';
-                    errorBox.classList.remove('d-none');
-                } finally {
-                    setLoading(false);
-                }
-            });
-        })();
-    </script>
+    <script src="<?php echo BASE_URL; ?>assets/js/admin-new-post.js"></script>
 </body>
 
 </html>

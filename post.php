@@ -27,6 +27,33 @@ try {
 $settings = load_settings();
 $site_title = $settings['site_title'] ?? SITE_TITLE ?? 'FlatFile Blog';
 $blogs_list_url = rtrim(BASE_URL, '/') . '/blogs';
+$interface_mode = defined('INTERFACE_MODE') ? (string) constant('INTERFACE_MODE') : ($settings['interface_mode'] ?? 'classic');
+
+if ($interface_mode === 'custom') {
+	header('HTTP/1.1 404 Not Found');
+	header('Content-Type: text/html; charset=utf-8');
+	?>
+	<!DOCTYPE html>
+	<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>Custom Interface Mode Enabled</title>
+	</head>
+	<body>
+		<h1>Custom Interface Mode Enabled</h1>
+		<p>The built-in post view page is disabled.</p>
+		<p>Use `rss.php` JSON output and build your own post page UI.</p>
+		<p>
+			<a href="<?php echo htmlspecialchars(BASE_URL . 'admin/', ENT_QUOTES, 'UTF-8'); ?>">
+				Open Admin Panel
+			</a>
+		</p>
+	</body>
+	</html>
+	<?php
+	exit;
+}
 
 // Get post slug from URL
 $slug = isset($_GET['slug']) ? trim($_GET['slug']) : '';
@@ -143,39 +170,6 @@ $canonical_url = BASE_URL . urlencode($post['slug']);
 			<meta property="article:tag" content="<?php echo htmlspecialchars($tag); ?>">
 		<?php endforeach; ?>
 	<?php endif; ?>
-
-	<!-- JSON-LD Structured Data -->
-	<script type="application/ld+json">
-		{
-			"@context": "https://schema.org",
-			"@type": "BlogPosting",
-			"headline": "<?php echo htmlspecialchars($post['title']); ?>",
-			"description": "<?php echo htmlspecialchars($page_description); ?>",
-			"image": "<?php echo !empty($post['meta']['image']) ? htmlspecialchars($post['meta']['image']) : BASE_URL . 'assets/default-image.jpg'; ?>",
-			"author": {
-				"@type": "Person",
-				"name": "<?php echo htmlspecialchars($post['author']); ?>"
-			},
-			"publisher": {
-				"@type": "Organization",
-				"name": "<?php echo SITE_TITLE; ?>",
-				"logo": {
-					"@type": "ImageObject",
-					"url": "<?php echo BASE_URL; ?>assets/logo.png"
-				}
-			},
-			"datePublished": "<?php echo date('c', strtotime($post['date'])); ?>",
-			"dateModified": "<?php echo date('c', strtotime($post['updated'])); ?>",
-			"mainEntityOfPage": {
-				"@type": "WebPage",
-				"@id": "<?php echo $canonical_url; ?>"
-			},
-			"url": "<?php echo $canonical_url; ?>",
-			"keywords": "<?php echo !empty($post['tags']) ? htmlspecialchars(implode(', ', $post['tags'])) : ''; ?>",
-			"articleSection": "<?php echo !empty($post['categories']) ? htmlspecialchars(implode(', ', $post['categories'])) : 'General'; ?>",
-			"wordCount": "<?php echo str_word_count(strip_tags($raw_content)); ?>"
-		}
-	</script>
 
 	<!-- Bootstrap CSS -->
 	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -352,6 +346,39 @@ $canonical_url = BASE_URL . urlencode($post['slug']);
 				</div>
 			</div>
 	</footer>
+
+	<!-- JSON-LD Structured Data -->
+	<script type="application/ld+json">
+		{
+			"@context": "https://schema.org",
+			"@type": "BlogPosting",
+			"headline": "<?php echo htmlspecialchars($post['title']); ?>",
+			"description": "<?php echo htmlspecialchars($page_description); ?>",
+			"image": "<?php echo !empty($post['meta']['image']) ? htmlspecialchars($post['meta']['image']) : BASE_URL . 'assets/default-image.jpg'; ?>",
+			"author": {
+				"@type": "Person",
+				"name": "<?php echo htmlspecialchars($post['author']); ?>"
+			},
+			"publisher": {
+				"@type": "Organization",
+				"name": "<?php echo SITE_TITLE; ?>",
+				"logo": {
+					"@type": "ImageObject",
+					"url": "<?php echo BASE_URL; ?>assets/logo.png"
+				}
+			},
+			"datePublished": "<?php echo date('c', strtotime($post['date'])); ?>",
+			"dateModified": "<?php echo date('c', strtotime($post['updated'])); ?>",
+			"mainEntityOfPage": {
+				"@type": "WebPage",
+				"@id": "<?php echo $canonical_url; ?>"
+			},
+			"url": "<?php echo $canonical_url; ?>",
+			"keywords": "<?php echo !empty($post['tags']) ? htmlspecialchars(implode(', ', $post['tags'])) : ''; ?>",
+			"articleSection": "<?php echo !empty($post['categories']) ? htmlspecialchars(implode(', ', $post['categories'])) : 'General'; ?>",
+			"wordCount": "<?php echo str_word_count(strip_tags($raw_content)); ?>"
+		}
+	</script>
 
 	<!-- Bootstrap JS -->
 	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

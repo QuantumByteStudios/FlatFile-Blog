@@ -98,7 +98,7 @@ if (isset($_GET['error'])) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <link href="<?php echo BASE_URL; ?>assets/css/main.css" rel="stylesheet">
-    <link href="assets/css/admin.css" rel="stylesheet">
+    <link href="<?php echo BASE_URL; ?>admin/assets/css/admin.css" rel="stylesheet">
 </head>
 
 <body class="bg-light">
@@ -323,32 +323,7 @@ if (isset($_GET['error'])) {
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Auto-generate slug from title
-        document.getElementById('title').addEventListener('input', function () {
-            const title = this.value;
-            const slug = title.toLowerCase()
-                .replace(/[^a-z0-9]+/g, '-')
-                .replace(/^-+|-+$/g, '');
-            document.getElementById('slug').value = slug;
-        });
-
-        // Toggle content type help text
-        function toggleContentType() {
-            const contentType = document.getElementById('content_type').value;
-            const contentHelp = document.getElementById('content-help');
-            const contentTextarea = document.getElementById('content');
-
-            if (contentType === 'html') {
-                contentHelp.innerHTML = '<strong>HTML supported:</strong> Use only &lt;b&gt;, &lt;i&gt;, &lt;u&gt;, &lt;br&gt;.';
-                contentTextarea.placeholder = 'Write your post content in HTML...';
-            } else {
-                contentHelp.innerHTML = '<strong>Markdown supported:</strong> Use **bold**, *italic*, `code`, [links](url), # headers, etc.';
-                contentTextarea.placeholder = 'Write your post content in Markdown...';
-            }
-        }
-        document.addEventListener('DOMContentLoaded', toggleContentType);
-    </script>
+    <script src="<?php echo BASE_URL; ?>assets/js/admin-edit-post.js"></script>
 </body>
 
 </html>

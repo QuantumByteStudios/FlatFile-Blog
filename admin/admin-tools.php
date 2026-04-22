@@ -200,7 +200,74 @@ $last_update_time = $ui_settings['last_update_time'] ?? null;
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <link href="<?php echo BASE_URL; ?>assets/css/main.css" rel="stylesheet">
-    <link href="assets/css/admin.css" rel="stylesheet">
+    <link href="<?php echo BASE_URL; ?>admin/assets/css/admin.css" rel="stylesheet">
+    <style>
+        .tools-hero {
+            background: linear-gradient(135deg, #111 0%, #2c2c2c 100%);
+            color: #fff;
+            border-radius: 14px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .tools-hero .tools-hero-subtitle {
+            color: rgba(255, 255, 255, 0.75);
+            margin-bottom: 0;
+        }
+
+        .tool-card {
+            border: 0;
+            border-radius: 14px;
+            box-shadow: 0 2px 14px rgba(0, 0, 0, 0.08);
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .tool-card .card-header {
+            background: #111;
+            color: #fff;
+            border-bottom: 0;
+            padding: 0.9rem 1rem;
+        }
+
+        .tool-card .card-header h5 {
+            color: #fff;
+            margin: 0;
+            font-size: 1rem;
+        }
+
+        .tool-muted-box {
+            background: #f8f9fa;
+            border: 1px solid #eceef1;
+            border-radius: 12px;
+            padding: 0.85rem 0.9rem;
+        }
+
+        .tool-item {
+            border: 1px solid #eceef1;
+            border-radius: 12px;
+            padding: 0.9rem;
+            margin-bottom: 0.8rem;
+            background: #fff;
+        }
+
+        .tool-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .tool-item-title {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            font-weight: 600;
+            margin-bottom: 0.55rem;
+        }
+
+        .tool-item-title i {
+            font-size: 0.95rem;
+        }
+    </style>
 </head>
 
 <body class="bg-light">
@@ -246,10 +313,20 @@ $last_update_time = $ui_settings['last_update_time'] ?? null;
             <!-- Main Content -->
             <div class="col-md-9 col-lg-10">
                 <div class="container-fluid py-4">
-                    <!-- Header -->
-                    <div class="mb-5">
-                        <h1 class="h3 mb-2 fw-bold">Maintenance Tools</h1>
-                        <p class="text-muted mb-0">System maintenance and cleanup utilities</p>
+                    <div class="tools-hero">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                            <div>
+                                <h1 class="h3 fw-bold mb-2">
+                                    Maintenance Tools
+                                </h1>
+                                <p class="tools-hero-subtitle">
+                                    Run updates, cleanup tasks, and backups from one place.
+                                </p>
+                            </div>
+                            <span class="badge rounded-pill text-bg-light">
+                                Admin Only
+                            </span>
+                        </div>
                     </div>
 
                     <!-- Success/Error Messages -->
@@ -269,125 +346,141 @@ $last_update_time = $ui_settings['last_update_time'] ?? null;
                         </div>
                     <?php endif; ?>
 
-                    <!-- Tools (flat 3-column layout) -->
-                    <div class="row g-5">
-                        <!-- Self-Updater -->
-                        <div class="col-lg-4">
-                            <div class="border-bottom border-2 pb-3 mb-4">
-                                <h5 class="mb-0 fw-semibold">
-                                    <i class="bi bi-cloud-arrow-down me-2 text-dark"></i>Self-Updater
-                                </h5>
+                    <div class="row g-4">
+                        <div class="col-xl-4 col-md-6">
+                            <div class="card tool-card">
+                                <div class="card-header">
+                                    <h5 class="fw-semibold">
+                                        <i class="bi bi-cloud-arrow-down me-2"></i>Self-Updater
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <?php if ($last_update_time): ?>
+                                        <div class="tool-muted-box mb-3">
+                                            <div class="d-flex align-items-center mb-1">
+                                                <i class="bi bi-clock-history me-2"></i>
+                                                <span class="small fw-semibold">
+                                                    Last Updated
+                                                </span>
+                                            </div>
+                                            <div class="text-muted small">
+                                                <?php echo date('M j, Y g:i A', strtotime($last_update_time)); ?>
+                                            </div>
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="tool-muted-box mb-3 text-muted small">
+                                            <i class="bi bi-info-circle me-1"></i>No updates recorded yet.
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <form method="POST" class="mb-2">
+                                        <input type="hidden" name="action" value="run_updater">
+                                        <input type="hidden" name="csrf_token"
+                                            value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
+                                        <button type="submit" class="btn btn-dark w-100">
+                                            <i class="bi bi-cloud-arrow-down me-2"></i>Update Now
+                                        </button>
+                                    </form>
+
+                                    <p class="small text-muted mb-0">
+                                        Pulls latest code from GitHub main branch while keeping content, uploads, logs, and config.
+                                    </p>
+                                </div>
                             </div>
-
-                            <?php if ($last_update_time): ?>
-                                <div class="mb-4 p-3 bg-light rounded">
-                                    <div class="d-flex align-items-center mb-1">
-                                        <i class="bi bi-clock-history text-dark me-2"></i>
-                                        <span class="small fw-medium text-dark">Last Updated</span>
-                                    </div>
-                                    <div class="text-muted small">
-                                        <?php echo date('M j, Y g:i A', strtotime($last_update_time)); ?>
-                                    </div>
-                                </div>
-                            <?php else: ?>
-                                <div class="mb-4 p-3 bg-light rounded">
-                                    <div class="d-flex align-items-center">
-                                        <i class="bi bi-info-circle text-muted me-2"></i>
-                                        <span class="small text-muted">No updates yet</span>
-                                    </div>
-                                </div>
-                            <?php endif; ?>
-
-                            <form method="POST" class="mb-3">
-                                <input type="hidden" name="action" value="run_updater">
-                                <input type="hidden" name="csrf_token"
-                                    value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
-                                <button type="submit" class="btn btn-dark btn-sm w-100">
-                                    <i class="bi bi-cloud-arrow-down me-2"></i>Update Now
-                                </button>
-                            </form>
-
-                            <p class="text-muted small mb-0">Pulls latest code from GitHub main branch. Content,
-                                uploads, logs, and config are preserved.</p>
                         </div>
 
-                        <!-- Maintenance -->
-                        <div class="col-lg-4">
-                            <div class="border-bottom border-2 pb-3 mb-4">
-                                <h5 class="mb-0 fw-semibold">
-                                    <i class="bi bi-tools me-2 text-dark"></i>System Maintenance
-                                </h5>
-                            </div>
-
-                            <!-- Clean Logs -->
-                            <div class="mb-4 pb-4 border-bottom">
-                                <form method="POST">
-                                    <input type="hidden" name="action" value="clean_logs">
-                                    <input type="hidden" name="csrf_token"
-                                        value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
-                                    <div class="d-flex align-items-center mb-3">
-                                        <i class="bi bi-trash text-dark me-2"></i>
-                                        <strong class="fw-medium">Clean Old Logs</strong>
+                        <div class="col-xl-4 col-md-6">
+                            <div class="card tool-card">
+                                <div class="card-header">
+                                    <h5 class="fw-semibold">
+                                        <i class="bi bi-tools me-2"></i>System Maintenance
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="tool-item">
+                                        <form method="POST">
+                                            <input type="hidden" name="action" value="clean_logs">
+                                            <input type="hidden" name="csrf_token"
+                                                value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
+                                            <div class="tool-item-title">
+                                                <i class="bi bi-trash"></i>
+                                                <span>
+                                                    Clean Old Logs
+                                                </span>
+                                            </div>
+                                            <div class="row g-2">
+                                                <div class="col-8">
+                                                    <select name="days" class="form-select form-select-sm">
+                                                        <option value="30">30 days</option>
+                                                        <option value="60">60 days</option>
+                                                        <option value="90" selected>90 days</option>
+                                                        <option value="180">180 days</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-4">
+                                                    <button type="submit" class="btn btn-dark btn-sm w-100">
+                                                        Clean
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </form>
                                     </div>
-                                    <div class="row g-2 mb-2">
-                                        <div class="col-8">
-                                            <select name="days" class="form-select form-select-sm">
-                                                <option value="30">30 days</option>
-                                                <option value="60">60 days</option>
-                                                <option value="90" selected>90 days</option>
-                                                <option value="180">180 days</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-4">
-                                            <button type="submit" class="btn btn-dark btn-sm w-100">
-                                                <i class="bi bi-trash"></i> Clean
+
+                                    <div class="tool-item">
+                                        <form method="POST">
+                                            <input type="hidden" name="action" value="clean_cache">
+                                            <input type="hidden" name="csrf_token"
+                                                value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
+                                            <div class="tool-item-title">
+                                                <i class="bi bi-broom"></i>
+                                                <span>
+                                                    Clean Cache
+                                                </span>
+                                            </div>
+                                            <p class="text-muted small mb-3">
+                                                Clear all cached files and temporary data.
+                                            </p>
+                                            <button type="submit" class="btn btn-outline-dark btn-sm w-100">
+                                                <i class="bi bi-broom me-2"></i>Run Cache Cleanup
                                             </button>
-                                        </div>
+                                        </form>
                                     </div>
-                                </form>
-                            </div>
-
-                            <!-- Clean Cache -->
-                            <div class="mb-4">
-                                <form method="POST">
-                                    <input type="hidden" name="action" value="clean_cache">
-                                    <input type="hidden" name="csrf_token"
-                                        value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
-                                    <div class="d-flex align-items-center mb-2">
-                                        <i class="bi bi-broom text-dark me-2"></i>
-                                        <strong class="fw-medium">Clean Cache</strong>
-                                    </div>
-                                    <p class="text-muted small mb-3">Clear all cached files and temporary data</p>
-                                    <button type="submit" class="btn btn-dark btn-sm">
-                                        <i class="bi bi-broom me-2"></i>Clean Cache
-                                    </button>
-                                </form>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Backup -->
-                        <div class="col-lg-4">
-                            <div class="border-bottom border-2 pb-3 mb-4">
-                                <h5 class="mb-0 fw-semibold">
-                                    <i class="bi bi-shield-check me-2 text-dark"></i>Backup & Security
-                                </h5>
-                            </div>
-
-                            <!-- Create Backup -->
-                            <div class="mb-4">
-                                <form method="POST">
-                                    <input type="hidden" name="action" value="create_backup">
-                                    <input type="hidden" name="csrf_token"
-                                        value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
-                                    <div class="d-flex align-items-center mb-2">
-                                        <i class="bi bi-archive text-dark me-2"></i>
-                                        <strong class="fw-medium">Create Backup</strong>
+                        <div class="col-xl-4 col-md-12">
+                            <div class="card tool-card">
+                                <div class="card-header">
+                                    <h5 class="fw-semibold">
+                                        <i class="bi bi-shield-check me-2"></i>Backup & Security
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="tool-item mb-3">
+                                        <form method="POST">
+                                            <input type="hidden" name="action" value="create_backup">
+                                            <input type="hidden" name="csrf_token"
+                                                value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
+                                            <div class="tool-item-title">
+                                                <i class="bi bi-archive"></i>
+                                                <span>
+                                                    Create Backup
+                                                </span>
+                                            </div>
+                                            <p class="text-muted small mb-3">
+                                                Generate a full backup of all content and uploads.
+                                            </p>
+                                            <button type="submit" class="btn btn-dark btn-sm w-100">
+                                                <i class="bi bi-archive me-2"></i>Create Backup
+                                            </button>
+                                        </form>
                                     </div>
-                                    <p class="text-muted small mb-3">Create a full backup of all content and uploads</p>
-                                    <button type="submit" class="btn btn-dark btn-sm">
-                                        <i class="bi bi-archive me-2"></i>Create Backup
-                                    </button>
-                                </form>
+                                    <div class="tool-muted-box small text-muted">
+                                        <i class="bi bi-shield-lock me-1"></i>
+                                        Use backup before updates on production for faster rollback.
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

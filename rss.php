@@ -22,8 +22,55 @@ try {
     die('System error. Please try again later.');
 }
 
+// Load settings and interface mode
+$settings = load_settings();
+$interface_mode = defined('INTERFACE_MODE') ? (string) constant('INTERFACE_MODE') : ($settings['interface_mode'] ?? 'classic');
+
 // Get latest published posts
 $posts = get_posts(1, 20, 'published'); // Get first 20 published posts
+
+if ($interface_mode === 'custom') {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: public, max-age=300');
+    $index_file = CONTENT_DIR . 'index.json';
+    $last_modified_ts = file_exists($index_file) ? filemtime($index_file) : time();
+    header('Last-Modified: ' . gmdate('D, d M Y H:i:s', $last_modified_ts) . ' GMT');
+
+    $json_posts = [];
+    foreach ($posts as $post) {
+        $json_posts[] = [
+            'slug' => $post['slug'] ?? '',
+            'title' => $post['title'] ?? '',
+            'excerpt' => $post['excerpt'] ?? '',
+            'content_html' => $post['content_html'] ?? $post['content'] ?? '',
+            'content_markdown' => $post['content_markdown'] ?? '',
+            'content_type' => $post['content_type'] ?? 'html',
+            'author' => $post['author'] ?? 'admin',
+            'status' => $post['status'] ?? 'published',
+            'date' => $post['date'] ?? '',
+            'updated' => $post['updated'] ?? '',
+            'tags' => $post['tags'] ?? [],
+            'categories' => $post['categories'] ?? [],
+            'meta' => $post['meta'] ?? [],
+            'url' => BASE_URL . urlencode($post['slug'] ?? '')
+        ];
+    }
+
+    $payload = [
+        'mode' => 'custom',
+        'site' => [
+            'title' => SITE_TITLE,
+            'base_url' => BASE_URL,
+            'description' => $settings['site_description'] ?? ''
+        ],
+        'generated_at' => date('c'),
+        'count' => count($json_posts),
+        'posts' => $json_posts
+    ];
+
+    echo json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    exit;
+}
 
 // Set RSS headers with caching
 header('Content-Type: application/rss+xml; charset=utf-8');

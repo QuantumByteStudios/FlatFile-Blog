@@ -180,19 +180,21 @@
 }
 
 .pagination .page-link {
-    color: #007bff;
+    color: #111;
     border-color: #dee2e6;
+    background-color: #fff;
 }
 
 .pagination .page-link:hover {
-    color: #0056b3;
-    background-color: #e9ecef;
+    color: #000;
+    background-color: #f3f4f6;
     border-color: #dee2e6;
 }
 
 .pagination .page-item.active .page-link {
-    background-color: #007bff;
-    border-color: #007bff;
+    background-color: #111;
+    border-color: #111;
+    color: #fff;
 }
 
 /* Blog Card Styles */
@@ -329,15 +331,16 @@
     border-radius: 8px;
     font-size: 0.85rem;
     padding: 0.6rem 1rem;
-    background: #3b82f6;
-    border: none;
+    background: #111;
+    border: 1px solid #111;
     color: white;
     font-weight: 500;
     transition: all 0.2s ease;
 }
 
 .blog-card-button:hover {
-    background: #2563eb;
+    background: #000;
+    border-color: #000;
     color: white;
     transform: translateY(-1px);
 }
