@@ -74,6 +74,32 @@ if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
+// Handle backup download requests
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['download_backup'])) {
+    $backup_file = basename((string) $_GET['download_backup']);
+    if (!preg_match('/^blog_backup_[a-zA-Z0-9_-]+\.zip$/', $backup_file)) {
+        http_response_code(400);
+        die('Invalid backup file name.');
+    }
+
+    $backup_dir = __DIR__ . '/backups/';
+    $backup_path = $backup_dir . $backup_file;
+    if (!is_file($backup_path) || !is_readable($backup_path)) {
+        http_response_code(404);
+        die('Backup file not found.');
+    }
+
+    header('Content-Description: File Transfer');
+    header('Content-Type: application/zip');
+    header('Content-Disposition: attachment; filename="' . rawurlencode($backup_file) . '"');
+    header('Content-Length: ' . (string) filesize($backup_path));
+    header('Cache-Control: no-cache, no-store, must-revalidate');
+    header('Pragma: no-cache');
+    header('Expires: 0');
+    readfile($backup_path);
+    exit;
+}
+
 // Handle form submissions
 $success_message = '';
 $error_message = '';
@@ -188,6 +214,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Load settings for last update time
 $ui_settings = load_settings();
 $last_update_time = $ui_settings['last_update_time'] ?? null;
+$available_backups = class_exists('BlogBackup') ? BlogBackup::listBackups() : [];
 
 ?>
 <!DOCTYPE html>
@@ -266,6 +293,11 @@ $last_update_time = $ui_settings['last_update_time'] ?? null;
 
         .tool-item-title i {
             font-size: 0.95rem;
+        }
+
+        .backup-list {
+            max-height: 280px;
+            overflow-y: auto;
         }
     </style>
 </head>
@@ -475,6 +507,38 @@ $last_update_time = $ui_settings['last_update_time'] ?? null;
                                                 <i class="bi bi-archive me-2"></i>Create Backup
                                             </button>
                                         </form>
+                                    </div>
+                                    <div class="tool-item mb-3">
+                                        <div class="tool-item-title">
+                                            <i class="bi bi-clock-history"></i>
+                                            <span>
+                                                Existing Backups
+                                            </span>
+                                        </div>
+                                        <?php if (!empty($available_backups)): ?>
+                                            <div class="backup-list">
+                                                <?php foreach ($available_backups as $backup): ?>
+                                                    <div class="d-flex justify-content-between align-items-center border rounded p-2 mb-2">
+                                                        <div class="small">
+                                                            <div class="fw-semibold">
+                                                                <?php echo htmlspecialchars($backup['filename'], ENT_QUOTES, 'UTF-8'); ?>
+                                                            </div>
+                                                            <div class="text-muted">
+                                                                <?php echo htmlspecialchars($backup['created'], ENT_QUOTES, 'UTF-8'); ?> • <?php echo htmlspecialchars($backup['size'], ENT_QUOTES, 'UTF-8'); ?>
+                                                            </div>
+                                                        </div>
+                                                        <a class="btn btn-outline-dark btn-sm"
+                                                            href="<?php echo BASE_URL; ?>admin/admin-tools?download_backup=<?php echo rawurlencode((string) $backup['filename']); ?>">
+                                                            <i class="bi bi-download me-1"></i>Download
+                                                        </a>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        <?php else: ?>
+                                            <div class="tool-muted-box small text-muted">
+                                                <i class="bi bi-info-circle me-1"></i>No backups available yet.
+                                            </div>
+                                        <?php endif; ?>
                                     </div>
                                     <div class="tool-muted-box small text-muted">
                                         <i class="bi bi-shield-lock me-1"></i>

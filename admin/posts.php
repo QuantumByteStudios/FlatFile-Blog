@@ -44,7 +44,30 @@ if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== tru
 
 clearstatcache(true);
 $all_posts = all_posts();
+$search_query = trim((string) ($_GET['q'] ?? ''));
+$view_mode = trim((string) ($_GET['view'] ?? 'all'));
+if (!in_array($view_mode, ['all', 'scheduled'], true)) {
+    $view_mode = 'all';
+}
+
+$current_ts = time();
+$scheduled_posts = array_values(array_filter($all_posts, static function ($post) use ($current_ts) {
+    $post_date = isset($post['date']) ? strtotime((string) $post['date']) : 0;
+    return (($post['status'] ?? '') === 'published') && ($post_date > $current_ts);
+}));
+
+$filtered_posts = $view_mode === 'scheduled' ? $scheduled_posts : $all_posts;
+if ($search_query !== '') {
+    $query_lc = mb_strtolower($search_query);
+    $filtered_posts = array_values(array_filter($filtered_posts, static function ($post) use ($query_lc) {
+        $title = mb_strtolower((string) ($post['title'] ?? ''));
+        return $title !== '' && strpos($title, $query_lc) !== false;
+    }));
+}
+
 $total_posts = count($all_posts);
+$display_count = count($filtered_posts);
+$scheduled_count = count($scheduled_posts);
 
 $success_message = '';
 $error_message = '';
@@ -127,18 +150,44 @@ if (isset($_GET['error'])) {
                             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
                                 <div>
                                     <h1 class="h3 mb-1 fw-bold text-white">All Posts</h1>
-                                    <p class="text-white-50 mb-0 small"><?php echo $total_posts; ?> total</p>
+                                    <p class="text-white-50 mb-0 small"><?php echo $display_count; ?> shown / <?php echo $total_posts; ?> total</p>
                                 </div>
-                                <a href="<?php echo BASE_URL; ?>admin" class="btn btn-outline-light btn-sm">
-                                    <i class="bi bi-arrow-left me-1"></i>Dashboard
-                                </a>
+                                <div class="d-flex gap-2">
+                                    <a href="<?php echo BASE_URL; ?>admin" class="btn btn-outline-light btn-sm">
+                                        <i class="bi bi-arrow-left me-1"></i>Dashboard
+                                    </a>
+                                    <a href="<?php echo BASE_URL; ?>admin/posts?view=scheduled"
+                                        class="btn btn-outline-light btn-sm <?php echo $view_mode === 'scheduled' ? 'active' : ''; ?>">
+                                        <i class="bi bi-clock-history me-1"></i>Scheduled (<?php echo $scheduled_count; ?>)
+                                    </a>
+                                </div>
                             </div>
                         </div>
                     </div>
 
+                    <form method="GET" class="mb-4">
+                        <div class="row g-2">
+                            <div class="col-md-7">
+                                <input type="text" class="form-control" name="q" value="<?php echo htmlspecialchars($search_query, ENT_QUOTES, 'UTF-8'); ?>"
+                                    placeholder="Search blogs by title">
+                            </div>
+                            <div class="col-md-3">
+                                <select name="view" class="form-select">
+                                    <option value="all" <?php echo $view_mode === 'all' ? 'selected' : ''; ?>>All Posts</option>
+                                    <option value="scheduled" <?php echo $view_mode === 'scheduled' ? 'selected' : ''; ?>>Scheduled Only</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 d-grid">
+                                <button type="submit" class="btn btn-dark">
+                                    <i class="bi bi-search me-1"></i>Search
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+
                     <div class="admin-posts-page border rounded bg-white shadow-sm">
-                        <?php if (!empty($all_posts)): ?>
-                            <?php foreach ($all_posts as $post):
+                        <?php if (!empty($filtered_posts)): ?>
+                            <?php foreach ($filtered_posts as $post):
                                 $post_date = isset($post['date']) ? strtotime($post['date']) : 0;
                                 $is_scheduled = ($post['status'] ?? '') === 'published' && $post_date > time();
                                 if ($is_scheduled) {
@@ -191,7 +240,7 @@ if (isset($_GET['error'])) {
                         <?php else: ?>
                             <div class="text-center py-5 px-3">
                                 <i class="bi bi-file-text text-muted" style="font-size: 3rem;"></i>
-                                <p class="text-muted mt-3 mb-3">No posts yet</p>
+                                <p class="text-muted mt-3 mb-3">No posts found for this filter/search</p>
                                 <a href="new-post" class="btn btn-dark btn-sm">Create your first post</a>
                             </div>
                         <?php endif; ?>

@@ -305,8 +305,12 @@ if ($action === 'update') {
     $cache_buster = '&_t=' . time();
     $redirect_url = BASE_URL . 'admin/edit-post?slug=' . urlencode($slug) . $cache_buster;
 } elseif ($action === 'create') {
-    // Add cache-busting parameter
-    $redirect_url = BASE_URL . 'admin/?_t=' . time();
+    // Keep user on create form on errors; send to dashboard on success
+    if ($error_message) {
+        $redirect_url = BASE_URL . 'admin/new-post?_t=' . time();
+    } else {
+        $redirect_url = BASE_URL . 'admin/?_t=' . time();
+    }
 }
 
 if ($success_message) {
@@ -333,6 +337,10 @@ function handle_create_post()
 
     if (empty($content)) {
         return ['success' => false, 'error' => 'Content is required.'];
+    }
+
+    if (is_duplicate_title($title)) {
+        return ['success' => false, 'error' => 'A post with this title already exists. Please use a unique title.'];
     }
 
     // Sanitize and validate data
@@ -464,6 +472,10 @@ function handle_update_post()
         return ['success' => false, 'error' => 'Content is required.'];
     }
 
+    if (is_duplicate_title($title, $original_slug)) {
+        return ['success' => false, 'error' => 'A post with this title already exists. Please use a unique title.'];
+    }
+
     // Get content type
     $content_type = $_POST['content_type'] ?? ($existing_post['content_type'] ?? 'markdown');
 
@@ -585,4 +597,27 @@ function handle_delete_post()
 function is_valid_slug($slug)
 {
     return is_string($slug) && preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $slug);
+}
+
+function is_duplicate_title(string $title, string $exclude_slug = ''): bool
+{
+    $needle = mb_strtolower(trim($title));
+    if ($needle === '') {
+        return false;
+    }
+
+    $posts = all_posts();
+    foreach ($posts as $post) {
+        $post_slug = (string) ($post['slug'] ?? '');
+        if ($exclude_slug !== '' && $post_slug === $exclude_slug) {
+            continue;
+        }
+
+        $existing_title = mb_strtolower(trim((string) ($post['title'] ?? '')));
+        if ($existing_title !== '' && $existing_title === $needle) {
+            return true;
+        }
+    }
+
+    return false;
 }

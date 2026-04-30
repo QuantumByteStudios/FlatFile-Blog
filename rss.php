@@ -90,8 +90,12 @@ echo '<?xml version="1.0" encoding="UTF-8"?>';
         <language>en-us</language>
         <lastBuildDate><?php echo date('r'); ?></lastBuildDate>
         <generator>FlatFile Blog v1.0</generator>
-        <managingEditor><?php echo htmlspecialchars($posts[0]['author'] ?? 'admin'); ?>@<?php echo parse_url(BASE_URL, PHP_URL_HOST); ?></managingEditor>
-        <webMaster><?php echo htmlspecialchars($posts[0]['author'] ?? 'admin'); ?>@<?php echo parse_url(BASE_URL, PHP_URL_HOST); ?></webMaster>
+        <managingEditor>
+            <?php echo htmlspecialchars($posts[0]['author'] ?? 'admin'); ?>@<?php echo parse_url(BASE_URL, PHP_URL_HOST); ?>
+        </managingEditor>
+        <webMaster>
+            <?php echo htmlspecialchars($posts[0]['author'] ?? 'admin'); ?>@<?php echo parse_url(BASE_URL, PHP_URL_HOST); ?>
+        </webMaster>
         <ttl>60</ttl>
         <atom:link href="<?php echo BASE_URL; ?>rss" rel="self" type="application/rss+xml" />
 
@@ -105,7 +109,8 @@ echo '<?xml version="1.0" encoding="UTF-8"?>';
                     </description>
                     <pubDate><?php echo date('r', strtotime($post['date'])); ?></pubDate>
                     <guid isPermaLink="true"><?php echo BASE_URL; ?><?php echo urlencode($post['slug']); ?></guid>
-                    <author><?php echo htmlspecialchars($post['author']); ?>@<?php echo parse_url(BASE_URL, PHP_URL_HOST); ?></author>
+                    <author><?php echo htmlspecialchars($post['author']); ?>@<?php echo parse_url(BASE_URL, PHP_URL_HOST); ?>
+                    </author>
                     <dc:creator><?php echo htmlspecialchars($post['author']); ?></dc:creator>
                     <?php if (!empty($post['tags'])): ?>
                         <?php foreach ($post['tags'] as $tag): ?>

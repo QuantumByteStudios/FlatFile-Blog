@@ -66,6 +66,27 @@ clearstatcache(true);
 
 // Load dashboard data — full list for admin (no per-page cap)
 $all_posts = all_posts();
+$search_query = trim((string) ($_GET['q'] ?? ''));
+$view_mode = trim((string) ($_GET['view'] ?? 'all'));
+if (!in_array($view_mode, ['all', 'scheduled'], true)) {
+    $view_mode = 'all';
+}
+
+$current_ts = time();
+$scheduled_posts = array_values(array_filter($all_posts, static function ($post) use ($current_ts) {
+    $post_date = isset($post['date']) ? strtotime((string) $post['date']) : 0;
+    return (($post['status'] ?? '') === 'published') && ($post_date > $current_ts);
+}));
+
+$recent_pool = $view_mode === 'scheduled' ? $scheduled_posts : $all_posts;
+if ($search_query !== '') {
+    $query_lc = mb_strtolower($search_query);
+    $recent_pool = array_values(array_filter($recent_pool, static function ($post) use ($query_lc) {
+        $title = mb_strtolower((string) ($post['title'] ?? ''));
+        return $title !== '' && strpos($title, $query_lc) !== false;
+    }));
+}
+
 $published_posts = array_filter($all_posts, function ($post) {
     return ($post['status'] ?? '') === 'published';
 });
@@ -75,9 +96,10 @@ $draft_posts = array_filter($all_posts, function ($post) {
 $total_posts = count($all_posts);
 $published_count = count($published_posts);
 $draft_count = count($draft_posts);
+$scheduled_count = count($scheduled_posts);
 
 // Dashboard: recent posts preview + sidebar activity
-$recent_posts = array_slice($all_posts, 0, 5);
+$recent_posts = array_slice($recent_pool, 0, 5);
 $recent_activity_posts = array_slice($all_posts, 0, 3);
 
 // Get posts by month for chart data
@@ -270,10 +292,33 @@ $csrf_token = function_exists('generate_csrf_token') ? generate_csrf_token() : (
                                 <h5 class="mb-0 fw-semibold text-white">
                                     <i class="bi bi-clock-history me-2"></i>Recent Posts
                                 </h5>
-                                <a href="<?php echo BASE_URL; ?>admin/posts" class="btn btn-sm btn-outline-light">
-                                    View all posts<?php if ($total_posts > 0): ?> (<?php echo $total_posts; ?>)<?php endif; ?>
-                                </a>
+                                <div class="d-flex gap-2">
+                                    <a href="<?php echo BASE_URL; ?>admin/posts" class="btn btn-sm btn-outline-light">
+                                        View all posts<?php if ($total_posts > 0): ?> (<?php echo $total_posts; ?>)<?php endif; ?>
+                                    </a>
+                                    <a href="<?php echo BASE_URL; ?>admin/posts?view=scheduled" class="btn btn-sm btn-outline-light">
+                                        Scheduled (<?php echo $scheduled_count; ?>)
+                                    </a>
+                                </div>
                             </div>
+                            <form method="GET" class="row g-2 mb-3">
+                                <div class="col-md-6">
+                                    <input type="text" class="form-control form-control-sm" name="q"
+                                        value="<?php echo htmlspecialchars($search_query, ENT_QUOTES, 'UTF-8'); ?>"
+                                        placeholder="Search blogs by title">
+                                </div>
+                                <div class="col-md-3">
+                                    <select name="view" class="form-select form-select-sm">
+                                        <option value="all" <?php echo $view_mode === 'all' ? 'selected' : ''; ?>>All</option>
+                                        <option value="scheduled" <?php echo $view_mode === 'scheduled' ? 'selected' : ''; ?>>Scheduled</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3 d-grid">
+                                    <button type="submit" class="btn btn-dark btn-sm">
+                                        <i class="bi bi-search me-1"></i>Filter
+                                    </button>
+                                </div>
+                            </form>
                             <div class="admin-posts-page admin-posts-page--compact border rounded bg-white shadow-sm">
                                     <?php if (!empty($recent_posts)): ?>
                                             <?php foreach ($recent_posts as $post):
@@ -329,7 +374,7 @@ $csrf_token = function_exists('generate_csrf_token') ? generate_csrf_token() : (
                                 <?php else: ?>
                                     <div class="text-center py-5">
                                         <i class="bi bi-file-text text-muted" style="font-size: 3rem;"></i>
-                                        <p class="text-muted mt-3 mb-3">No posts yet</p>
+                                        <p class="text-muted mt-3 mb-3">No posts found for this filter/search</p>
                                         <a href="new-post" class="btn btn-dark btn-sm">Create your first post</a>
                                     </div>
                                 <?php endif; ?>

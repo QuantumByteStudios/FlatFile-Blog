@@ -35,11 +35,13 @@ if ($interface_mode === 'custom') {
     ?>
     <!DOCTYPE html>
     <html lang="en">
+
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Custom Interface Mode Enabled</title>
     </head>
+
     <body>
         <h1>Custom Interface Mode Enabled</h1>
         <p>The built-in public listing page is disabled.</p>
@@ -50,6 +52,7 @@ if ($interface_mode === 'custom') {
             </a>
         </p>
     </body>
+
     </html>
     <?php
     exit;
