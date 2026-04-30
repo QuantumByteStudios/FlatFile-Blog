@@ -23,6 +23,10 @@ try {
 	die('System error. Please try again later.');
 }
 
+if (session_status() === PHP_SESSION_NONE) {
+	session_start();
+}
+
 // Load settings for footer/contact info
 $settings = load_settings();
 $site_title = $settings['site_title'] ?? SITE_TITLE ?? 'FlatFile Blog';
@@ -84,7 +88,8 @@ if ($post['status'] !== 'published') {
 // If post date is in the future, don't show it to public
 $post_date = isset($post['date']) ? strtotime($post['date']) : 0;
 $current_time = time();
-if ($post_date > $current_time) {
+$is_admin_preview = isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true;
+if ($post_date > $current_time && !$is_admin_preview) {
 	// Post is scheduled for future - show 404 to public
 	header('HTTP/1.0 404 Not Found');
 	include '404.php';
