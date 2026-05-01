@@ -1,6 +1,11 @@
 # Enable URL rewriting
 RewriteEngine On
 
+# Serve real files and directories as-is (CSS, JS, images, etc.)
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
 # Security - Block access to sensitive files
 <Files "config.php">
     Require all denied

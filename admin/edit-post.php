@@ -206,8 +206,7 @@ if (isset($_GET['error'])) {
 
                                         <div class="mb-3">
                                             <label for="content_type" class="form-label">Content Type</label>
-                                            <select class="form-select" id="content_type" name="content_type"
-                                                onchange="toggleContentType()">
+                                            <select class="form-select" id="content_type" name="content_type">
                                                 <option value="markdown" <?php echo ($effective_content_type === 'markdown') ? 'selected' : ''; ?>>
                                                     Markdown</option>
                                                 <option value="html" <?php echo ($effective_content_type === 'html') ? 'selected' : ''; ?>>HTML</option>
