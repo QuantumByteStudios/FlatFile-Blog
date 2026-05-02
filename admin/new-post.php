@@ -176,9 +176,14 @@ if (isset($_GET['error'])) {
 
                                     <div class="mb-4">
                                         <label for="slug" class="form-label fw-medium">Slug</label>
-                                        <input type="text" class="form-control" id="slug" name="slug"
+                                        <input type="text" class="form-control bg-light" id="slug" name="slug"
                                             value="<?php echo htmlspecialchars($slug ?? ''); ?>"
-                                            placeholder="auto-generated from title">
+                                            placeholder="auto-generated from title" readonly
+                                            autocomplete="off"
+                                            title="Generated automatically from the title">
+                                        <div class="form-text text-muted small">
+                                            Generated from the title. You can change the title to update the slug before publishing.
+                                        </div>
                                     </div>
 
                                     <div class="mb-4">

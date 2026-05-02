@@ -257,7 +257,14 @@ if (isset($_GET['error'])) {
                                                 <div class="mt-2">
                                                     <small class="text-muted">Current image: <a
                                                             href="<?php echo htmlspecialchars($post['meta']['image']); ?>"
-                                                            target="_blank">View</a></small>
+                                                            target="_blank" rel="noopener">View</a></small>
+                                                </div>
+                                                <div class="form-check mt-2">
+                                                    <input class="form-check-input" type="checkbox" name="remove_featured_image"
+                                                        value="1" id="remove_featured_image">
+                                                    <label class="form-check-label" for="remove_featured_image">
+                                                        Remove featured image from this post
+                                                    </label>
                                                 </div>
                                             <?php endif; ?>
                                         </div>

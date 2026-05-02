@@ -439,6 +439,54 @@ function handle_create_post()
 }
 
 /**
+ * Delete a featured image file from disk if URL points inside this site's uploads directory.
+ */
+function delete_featured_image_file_if_local(string $image_url): void
+{
+    if ($image_url === '') {
+        return;
+    }
+
+    $base = rtrim((string) BASE_URL, '/');
+    if (!str_starts_with($image_url, $base)) {
+        return;
+    }
+
+    $relative = ltrim(substr($image_url, strlen($base)), '/');
+    if ($relative === '' || str_contains($relative, '..')) {
+        return;
+    }
+
+    if (!defined('UPLOADS_DIR')) {
+        return;
+    }
+
+    $uploads_root = realpath(rtrim(constant('UPLOADS_DIR'), '/\\'));
+    if ($uploads_root === false) {
+        return;
+    }
+
+    $candidate = realpath(__DIR__ . '/' . $relative);
+    if ($candidate === false || !str_starts_with($candidate, $uploads_root)) {
+        return;
+    }
+
+    if (is_file($candidate)) {
+        @unlink($candidate);
+    }
+
+    $dir = dirname($candidate);
+    $stem = pathinfo($candidate, PATHINFO_FILENAME);
+    $ext = pathinfo($candidate, PATHINFO_EXTENSION);
+    foreach (['_thumb', '_medium'] as $suffix) {
+        $variant = $dir . '/' . $stem . $suffix . '.' . $ext;
+        if (is_file($variant)) {
+            @unlink($variant);
+        }
+    }
+}
+
+/**
  * Handle update post action
  */
 function handle_update_post()
@@ -543,8 +591,14 @@ function handle_update_post()
         $existing_post['categories'] = array_filter(array_map('trim', explode(',', $_POST['categories'])));
     }
 
-    // Handle featured image upload
-    if (isset($_FILES['featured_image']) && $_FILES['featured_image']['error'] === UPLOAD_ERR_OK) {
+    if (!isset($existing_post['meta']) || !is_array($existing_post['meta'])) {
+        $existing_post['meta'] = [];
+    }
+
+    $new_featured_upload = isset($_FILES['featured_image']) && $_FILES['featured_image']['error'] === UPLOAD_ERR_OK;
+    $remove_featured_image = !empty($_POST['remove_featured_image']);
+
+    if ($new_featured_upload) {
         if (!class_exists('ImageUploader')) {
             return ['success' => false, 'error' => 'Image upload service is unavailable.'];
         }
@@ -552,6 +606,12 @@ function handle_update_post()
         if ($upload_result['success']) {
             $existing_post['meta']['image'] = $upload_result['url'];
         }
+    } elseif ($remove_featured_image) {
+        $old_image_url = (string) ($existing_post['meta']['image'] ?? '');
+        if ($old_image_url !== '') {
+            delete_featured_image_file_if_local($old_image_url);
+        }
+        unset($existing_post['meta']['image']);
     }
 
     // Save updated post

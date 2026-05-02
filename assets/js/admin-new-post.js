@@ -18,6 +18,18 @@ document.addEventListener('DOMContentLoaded', () => {
 	const contentTextarea = document.getElementById('content');
 	const baseUrl = document.body.getAttribute('data-base-url') || '/';
 
+	const slugFromTitle = (title) => title
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '');
+
+	const syncSlugFromTitle = () => {
+		if (!titleInput || !slugInput) {
+			return;
+		}
+		slugInput.value = slugFromTitle(titleInput.value);
+	};
+
 	const toggleContentType = () => {
 		if (!contentTypeSelect || !contentHelp || !contentTextarea) {
 			return;
@@ -34,15 +46,10 @@ document.addEventListener('DOMContentLoaded', () => {
 	};
 
 	if (titleInput && slugInput) {
-		titleInput.addEventListener('input', () => {
-			const slug = titleInput.value
-				.toLowerCase()
-				.replace(/[^a-z0-9]+/g, '-')
-				.replace(/^-+|-+$/g, '');
-			slugInput.value = slug;
-		});
+		titleInput.addEventListener('input', syncSlugFromTitle);
 	}
 
+	syncSlugFromTitle();
 	toggleContentType();
 	if (contentTypeSelect) {
 		contentTypeSelect.addEventListener('change', toggleContentType);
@@ -128,6 +135,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 			if (slugInput && data.slug) {
 				slugInput.value = data.slug;
+			} else {
+				syncSlugFromTitle();
 			}
 
 			if (contentTypeSelect) {
