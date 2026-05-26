@@ -128,6 +128,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 break;
 
+            case 'fix_site_urls':
+                $fixed = migrate_all_stored_urls_to_live_domain();
+                $success_message = 'Site URLs updated to live domain (' . $fixed . ' record(s) changed). robots.txt refreshed.';
+                break;
+
             case 'create_backup':
                 try {
                     $backup_result = BlogBackup::createBackup('manual');
@@ -474,6 +479,24 @@ $available_backups = class_exists('BlogBackup') ? BlogBackup::listBackups() : []
                                             </p>
                                             <button type="submit" class="btn btn-outline-dark btn-sm w-100">
                                                 <i class="bi bi-broom me-2"></i>Run Cache Cleanup
+                                            </button>
+                                        </form>
+                                    </div>
+
+                                    <div class="tool-item">
+                                        <form method="POST">
+                                            <input type="hidden" name="action" value="fix_site_urls">
+                                            <input type="hidden" name="csrf_token"
+                                                value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
+                                            <div class="tool-item-title">
+                                                <i class="bi bi-link-45deg"></i>
+                                                <span>Fix Live URLs</span>
+                                            </div>
+                                            <p class="text-muted small mb-3">
+                                                Replace localhost and duplicate-domain URLs in all posts, favicon, and robots.txt using your Live Site URL from Settings.
+                                            </p>
+                                            <button type="submit" class="btn btn-outline-dark btn-sm w-100">
+                                                <i class="bi bi-arrow-repeat me-2"></i>Rewrite URLs to Live Domain
                                             </button>
                                         </form>
                                     </div>

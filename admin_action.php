@@ -164,15 +164,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action'])) {
             exit;
         }
 
+        $slug = isset($result['title']) ? slugify($result['title']) : '';
+        $preview_post = [
+            'slug' => $slug,
+            'title' => $result['title'] ?? '',
+            'excerpt' => $result['excerpt'] ?? '',
+            'content_html' => $result['content_html'] ?? '',
+            'content_type' => 'html',
+        ];
+
         echo json_encode([
             'success' => true,
             'title' => $result['title'] ?? '',
             'excerpt' => $result['excerpt'] ?? '',
-            'tags' => $result['tags'] ?? [],
-            'categories' => $result['categories'] ?? [],
-            'slug' => isset($result['title']) ? slugify($result['title']) : '',
-            'content_html' => $result['content_html'] ?? ''
-        ]);
+            'meta_title' => $result['meta_title'] ?? '',
+            'meta_description' => $result['meta_description'] ?? '',
+            'og_title' => $result['og_title'] ?? '',
+            'og_description' => $result['og_description'] ?? '',
+            'tags' => array_values($result['tags'] ?? []),
+            'categories' => array_values($result['categories'] ?? []),
+            'faq' => array_values($result['faq'] ?? []),
+            'slug' => $slug,
+            'content_html' => $result['content_html'] ?? '',
+            'content_type' => 'html',
+            'word_count' => post_word_count($preview_post),
+            'read_time' => post_read_time_minutes($preview_post),
+            'canonical_preview' => $slug !== '' ? absolute_url(rawurlencode($slug)) : '',
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
     }
 }
@@ -696,6 +714,10 @@ function apply_cms_fields_to_post(array &$post_data): void
     $meta_title = trim($_POST['meta_title'] ?? '');
     $meta_description = trim($_POST['meta_description'] ?? '');
     $canonical_url = trim($_POST['canonical_url'] ?? '');
+    if ($canonical_url !== '') {
+        $slug_path = !empty($post_data['slug']) ? rawurlencode((string) $post_data['slug']) : '';
+        $canonical_url = normalize_absolute_url($canonical_url, $slug_path);
+    }
     $robots_index = !empty($_POST['robots_index']);
 
     $post_data['seo'] = [
@@ -753,6 +775,7 @@ function apply_cms_fields_to_post(array &$post_data): void
 
     $post_data['word_count'] = post_word_count($post_data);
     $post_data['read_time'] = post_read_time_minutes($post_data);
+    normalize_post_stored_urls($post_data);
 }
 
 function is_duplicate_title(string $title, string $exclude_slug = ''): bool

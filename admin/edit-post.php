@@ -102,6 +102,10 @@ if (isset($_GET['error'])) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <link href="<?php echo BASE_URL; ?>assets/css/main.css" rel="stylesheet">
     <link href="<?php echo BASE_URL; ?>admin/assets/css/admin.css" rel="stylesheet">
+    <style>
+        #serp-preview-title { color: #1a0dab; }
+        #serp-preview-url { color: #006621; }
+    </style>
 </head>
 
 <body class="bg-light" data-base-url="<?php echo htmlspecialchars(BASE_URL, ENT_QUOTES, 'UTF-8'); ?>">
@@ -148,11 +152,14 @@ if (isset($_GET['error'])) {
             <div class="col-md-9 col-lg-10">
                 <div class="container-fluid py-4">
                     <!-- Header -->
-                    <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
                         <h1 class="h3 mb-0">Edit Post</h1>
                         <div>
+                            <button type="button" class="btn btn-outline-dark me-2" data-bs-toggle="modal" data-bs-target="#aiModal">
+                                <i class="bi bi-stars"></i> Regenerate with AI
+                            </button>
                             <a href="<?php echo BASE_URL; ?><?php echo $post['slug']; ?>" target="_blank"
-                                class="btn btn-outline-primary me-2">
+                                class="btn btn-outline-primary">
                                 <i class="bi bi-eye"></i> View Post
                             </a>
                         </div>
@@ -228,6 +235,8 @@ if (isset($_GET['error'])) {
                                         </div>
                                     </div>
                                 </div>
+
+                                <?php $current_slug = $post['slug']; include __DIR__ . '/includes/post-cms-seo.php'; ?>
                             </div>
 
                             <div class="col-lg-4">
@@ -327,7 +336,7 @@ if (isset($_GET['error'])) {
                                     </div>
                                 </div>
 
-                                <?php $current_slug = $post['slug']; include __DIR__ . '/includes/post-cms-fields.php'; ?>
+                                <?php include __DIR__ . '/includes/post-cms-advanced.php'; ?>
 
                                 <!-- Actions -->
                                 <div class="card">
@@ -345,14 +354,41 @@ if (isset($_GET['error'])) {
                             </div>
                         </div>
                     </form>
+
+                    <div class="modal fade" id="aiModal" tabindex="-1" aria-labelledby="aiModalLabel" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="aiModalLabel"><i class="bi bi-stars"></i> Generate with AI</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="mb-3">
+                                        <label for="ai_topic" class="form-label">Topic</label>
+                                        <input type="text" class="form-control" id="ai_topic"
+                                            placeholder="e.g. Benefits of local SEO for small businesses">
+                                        <div class="form-text">Replaces post body and SEO fields. Review before saving.</div>
+                                    </div>
+                                    <div id="ai_error" class="alert alert-danger d-none" role="alert"></div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    <button type="button" id="ai_generate_btn" class="btn btn-primary">
+                                        <span class="spinner-border spinner-border-sm d-none" id="ai_spinner" role="status" aria-hidden="true"></span>
+                                        <span id="ai_generate_text">Generate</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="<?php echo BASE_URL; ?>assets/js/admin-edit-post.js"></script>
     <script src="<?php echo BASE_URL; ?>assets/js/admin-post-cms.js"></script>
+    <script src="<?php echo BASE_URL; ?>assets/js/admin-edit-post.js"></script>
 </body>
 
 </html>

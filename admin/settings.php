@@ -121,10 +121,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     }
                 }
             }
+            if ($favicon_url !== '') {
+                $favicon_url = normalize_stored_media_url($favicon_url);
+            }
+
+            $site_url_input = trim($_POST['site_url'] ?? '');
+            if ($site_url_input !== '') {
+                $site_url_input = normalize_base_url($site_url_input);
+            } else {
+                $site_url_input = $existing_settings['site_url'] ?? (defined('BASE_URL') ? (string) constant('BASE_URL') : '');
+            }
 
             $settings = array_merge($existing_settings, [
                 'site_title' => trim($_POST['site_title'] ?? ''),
                 'site_description' => trim($_POST['site_description'] ?? ''),
+                'site_url' => $site_url_input,
                 'admin_email' => trim($_POST['admin_email'] ?? ''),
                 'posts_per_page' => (int) ($_POST['posts_per_page'] ?? 10),
                 'favicon_url' => $favicon_url,
@@ -151,10 +162,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 if (file_put_contents($settings_file, json_encode($settings, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE))) {
                     $success_message = "Settings updated successfully!";
 
-                    // Update config.php if site title changed
                     if ($site_title !== SITE_TITLE) {
                         update_config_site_title($site_title);
                     }
+                    if ($site_url_input !== '' && defined('BASE_URL') && normalize_base_url((string) constant('BASE_URL')) !== $site_url_input) {
+                        update_config_base_url($site_url_input);
+                    }
+                    migrate_all_stored_urls_to_live_domain();
+                    write_robots_txt();
                 } else {
                     $error_message = "Failed to save settings. Check file permissions.";
                 }
@@ -185,7 +200,8 @@ $settings = array_merge([
     'updater_token' => '',
     'updater_url' => '',
     'updater_checksum' => '',
-    'favicon_url' => ''
+    'favicon_url' => '',
+    'site_url' => defined('BASE_URL') ? (string) constant('BASE_URL') : ''
 ], $current_settings);
 
 // If no saved key, show env fallback in the textbox for convenience
@@ -210,6 +226,28 @@ function update_config_site_title($new_title)
     $config_content = preg_replace(
         "/define\('SITE_TITLE', '[^']*'\);/",
         "define('SITE_TITLE', '" . $sanitized_title . "');",
+        $config_content
+    );
+
+    return file_put_contents($config_file, $config_content) !== false;
+}
+
+function update_config_base_url(string $new_url): bool
+{
+    $config_file = dirname(__DIR__) . '/config.php';
+    if (!file_exists($config_file)) {
+        return false;
+    }
+
+    $config_content = file_get_contents($config_file);
+    if ($config_content === false) {
+        return false;
+    }
+
+    $sanitized_url = addslashes(normalize_base_url($new_url));
+    $config_content = preg_replace(
+        "/define\('BASE_URL', '[^']*'\);/",
+        "define('BASE_URL', '" . $sanitized_url . "');",
         $config_content
     );
 
@@ -317,6 +355,14 @@ function update_config_site_title($new_title)
                                             <input type="text" class="form-control" id="site_title" name="site_title"
                                                 value="<?php echo htmlspecialchars($settings['site_title'] ?? '', ENT_QUOTES, 'UTF-8'); ?>"
                                                 required maxlength="255">
+                                        </div>
+
+                                        <div class="mb-4">
+                                            <label for="site_url" class="form-label fw-medium">Live Site URL *</label>
+                                            <input type="url" class="form-control" id="site_url" name="site_url"
+                                                value="<?php echo htmlspecialchars(normalize_base_url($settings['site_url'] ?? (defined('BASE_URL') ? (string) constant('BASE_URL') : '')), ENT_QUOTES, 'UTF-8'); ?>"
+                                                required placeholder="https://yourdomain.com/blog/">
+                                            <div class="form-text text-muted small mt-1">Used for canonical URLs, Open Graph, schema JSON-LD, favicon, and sitemap. Replaces any localhost URLs in saved posts when you save.</div>
                                         </div>
 
                                         <div class="mb-4">

@@ -30,7 +30,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // Load settings for footer/contact info
 $settings = load_settings();
 $site_title = $settings['site_title'] ?? SITE_TITLE ?? 'FlatFile Blog';
-$blogs_list_url = rtrim(BASE_URL, '/') . '/blogs';
+$blogs_list_url = absolute_url('blogs');
 $interface_mode = defined('INTERFACE_MODE') ? (string) constant('INTERFACE_MODE') : ($settings['interface_mode'] ?? 'classic');
 
 if ($interface_mode === 'custom') {
@@ -323,7 +323,7 @@ $share_title = rawurlencode($post['title']);
 						<ul class="list-unstyled">
 							<?php foreach ($related_posts as $rp): ?>
 								<li class="mb-2">
-									<a href="<?php echo htmlspecialchars(rtrim(BASE_URL, '/') . '/' . rawurlencode($rp['slug']), ENT_QUOTES, 'UTF-8'); ?>">
+									<a href="<?php echo htmlspecialchars(absolute_url(rawurlencode($rp['slug'])), ENT_QUOTES, 'UTF-8'); ?>">
 										<?php echo htmlspecialchars($rp['title'] ?? $rp['slug']); ?>
 									</a>
 								</li>

@@ -25,7 +25,7 @@ echo '<?xml version="1.0" encoding="UTF-8"?>';
     xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
     <!-- Homepage -->
     <url>
-        <loc><?php echo BASE_URL; ?></loc>
+        <loc><?php echo htmlspecialchars(absolute_url('/'), ENT_QUOTES, 'UTF-8'); ?></loc>
         <lastmod><?php echo date('c'); ?></lastmod>
         <changefreq>daily</changefreq>
         <priority>1.0</priority>
@@ -33,7 +33,7 @@ echo '<?xml version="1.0" encoding="UTF-8"?>';
 
     <!-- RSS feed -->
     <url>
-        <loc><?php echo BASE_URL; ?>rss</loc>
+        <loc><?php echo htmlspecialchars(absolute_url('rss'), ENT_QUOTES, 'UTF-8'); ?></loc>
         <lastmod><?php echo date('c'); ?></lastmod>
         <changefreq>daily</changefreq>
         <priority>0.6</priority>
@@ -42,13 +42,13 @@ echo '<?xml version="1.0" encoding="UTF-8"?>';
     <!-- Individual posts -->
     <?php foreach ($posts as $post): ?>
         <url>
-            <loc><?php echo BASE_URL; ?><?php echo urlencode($post['slug']); ?></loc>
+            <loc><?php echo htmlspecialchars(absolute_url(rawurlencode($post['slug'])), ENT_QUOTES, 'UTF-8'); ?></loc>
             <lastmod><?php echo date('c', strtotime($post['updated'])); ?></lastmod>
             <changefreq>monthly</changefreq>
             <priority><?php echo number_format(post_sitemap_priority($post), 1, '.', ''); ?></priority>
             <?php $sitemap_image = post_og_image($post); if ($sitemap_image !== ''): ?>
                 <image:image>
-                    <image:loc><?php echo htmlspecialchars($sitemap_image); ?></image:loc>
+                    <image:loc><?php echo htmlspecialchars(normalize_stored_media_url($sitemap_image), ENT_QUOTES, 'UTF-8'); ?></image:loc>
                     <image:title><?php echo htmlspecialchars($post['title']); ?></image:title>
                     <image:caption><?php echo htmlspecialchars($post['excerpt'] ?: substr(strip_tags($post['content_markdown'] ?? ''), 0, 200)); ?></image:caption>
                 </image:image>

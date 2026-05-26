@@ -81,6 +81,10 @@ if (isset($_GET['error'])) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <link href="<?php echo BASE_URL; ?>assets/css/main.css" rel="stylesheet">
     <link href="<?php echo BASE_URL; ?>admin/assets/css/admin.css" rel="stylesheet">
+    <style>
+        #serp-preview-title { color: #1a0dab; }
+        #serp-preview-url { color: #006621; }
+    </style>
 </head>
 
 <body class="bg-light" data-base-url="<?php echo htmlspecialchars(BASE_URL, ENT_QUOTES, 'UTF-8'); ?>">
@@ -215,6 +219,8 @@ if (isset($_GET['error'])) {
                                         </div>
                                     </div>
                                 </div>
+
+                                <?php $current_slug = $slug ?? ''; include __DIR__ . '/includes/post-cms-seo.php'; ?>
                             </div>
 
                             <div class="col-lg-4">
@@ -302,7 +308,7 @@ if (isset($_GET['error'])) {
                                     </div>
                                 </div>
 
-                                <?php $current_slug = ''; include __DIR__ . '/includes/post-cms-fields.php'; ?>
+                                <?php $current_slug = ''; include __DIR__ . '/includes/post-cms-advanced.php'; ?>
 
                                 <!-- Actions -->
                                 <div class="border-top pt-4">
@@ -335,7 +341,7 @@ if (isset($_GET['error'])) {
                                         <label for="ai_topic" class="form-label">Topic</label>
                                         <input type="text" class="form-control" id="ai_topic"
                                             placeholder="e.g. Local SEO tips for dentists">
-                                        <div class="form-text">Describe the topic you want a blog about.</div>
+                                        <div class="form-text">Generates H1, content, meta title/description (with counters), OG fields, tags, categories, and FAQ schema suggestions.</div>
                                     </div>
                                     <div id="ai_error" class="alert alert-danger d-none" role="alert"></div>
                                 </div>
@@ -357,8 +363,8 @@ if (isset($_GET['error'])) {
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="<?php echo BASE_URL; ?>assets/js/admin-new-post.js"></script>
     <script src="<?php echo BASE_URL; ?>assets/js/admin-post-cms.js"></script>
+    <script src="<?php echo BASE_URL; ?>assets/js/admin-new-post.js"></script>
 </body>
 
 </html>

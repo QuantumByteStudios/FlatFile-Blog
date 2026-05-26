@@ -57,7 +57,7 @@ class ImageUploader
                 'success' => true,
                 'filename' => $filename,
                 'path' => $subfolder . '/' . $filename,
-                'url' => BASE_URL . 'uploads/' . $subfolder . '/' . $filename,
+                'url' => absolute_url('uploads/' . trim($subfolder, '/') . '/' . $filename),
                 'sizes' => $sizes
             ];
         } else {

@@ -46,10 +46,11 @@ class OpenAIClient
 			return ['success' => false, 'error' => 'Failed to parse OpenAI response'];
 		}
 
-		// Clean and format the HTML content
 		if (isset($parsed['content_html'])) {
 			$parsed['content_html'] = $this->cleanHtmlContent($parsed['content_html']);
 		}
+
+		$parsed = $this->normalizeSeoFields($parsed);
 
 		return ['success' => true] + $parsed;
 	}
@@ -61,7 +62,17 @@ class OpenAIClient
 			"Act as a professional SEO expert and write a blog on the topic: '" . trim($topic) . "'.",
 			"The blog must be SEO-friendly and highlight the benefits of the given topic for businesses.",
 			"Promote the client's company naturally to build credibility (do not overdo it).",
-			"Provide STRICT JSON only (no fences) with keys: title (string), excerpt (2-3 lines), tags (array of 3-8 short tags), categories (array of 1-4 categories), content_html (string).",
+			"Provide STRICT JSON only (no markdown fences) with these keys:",
+			"  title (string) — H1 / blog heading shown on the page",
+			"  excerpt (string) — 2-3 sentence summary for the post card",
+			"  meta_title (string) — SEO title for Google, max 60 characters, may differ slightly from title",
+			"  meta_description (string) — SEO meta description, max 155 characters, compelling click-through copy",
+			"  og_title (string) — Open Graph / social share title, max 70 characters",
+			"  og_description (string) — Open Graph description, max 200 characters",
+			"  tags (array of 3-8 short tag strings)",
+			"  categories (array of 1-4 category name strings)",
+			"  faq (array of 0-4 objects, each with question and answer strings, for FAQ schema)",
+			"  content_html (string) — full article body",
 			"content_html must be pure semantic HTML. Use proper HTML structure:",
 			"  - Use <p> tags for paragraphs (NOT <br> tags for spacing)",
 			"  - Use <h2> for main section headings and <h3> for subsections",
@@ -179,7 +190,12 @@ class OpenAIClient
 			if (!is_array($categories))
 				$categories = [];
 			$contentHtml = (string) ($asJson['content_html'] ?? '');
-			// Fallback: if title missing, derive from topic
+			$metaTitle = trim((string) ($asJson['meta_title'] ?? ''));
+			$metaDescription = trim((string) ($asJson['meta_description'] ?? ''));
+			$ogTitle = trim((string) ($asJson['og_title'] ?? ''));
+			$ogDescription = trim((string) ($asJson['og_description'] ?? ''));
+			$faq = $this->parseFaq($asJson['faq'] ?? []);
+
 			if ($title === '' && $topic !== '') {
 				$title = $this->fallbackTitle($topic);
 			}
@@ -187,13 +203,86 @@ class OpenAIClient
 				return [
 					'title' => $title,
 					'excerpt' => $excerpt,
+					'meta_title' => $metaTitle,
+					'meta_description' => $metaDescription,
+					'og_title' => $ogTitle,
+					'og_description' => $ogDescription,
 					'tags' => $tags,
 					'categories' => $categories,
+					'faq' => $faq,
 					'content_html' => $contentHtml
 				];
 			}
 		}
 		return null;
+	}
+
+	private function parseFaq($faq): array
+	{
+		if (!is_array($faq)) {
+			return [];
+		}
+		$out = [];
+		foreach ($faq as $item) {
+			if (!is_array($item)) {
+				continue;
+			}
+			$q = trim((string) ($item['question'] ?? ''));
+			$a = trim((string) ($item['answer'] ?? ''));
+			if ($q !== '' && $a !== '') {
+				$out[] = ['question' => $q, 'answer' => $a];
+			}
+			if (count($out) >= 4) {
+				break;
+			}
+		}
+		return $out;
+	}
+
+	/**
+	 * Enforce length limits and fallbacks for SEO / OG fields.
+	 */
+	private function normalizeSeoFields(array $parsed): array
+	{
+		$title = trim((string) ($parsed['title'] ?? ''));
+		$excerpt = trim((string) ($parsed['excerpt'] ?? ''));
+
+		$metaTitle = trim((string) ($parsed['meta_title'] ?? ''));
+		if ($metaTitle === '') {
+			$metaTitle = $title;
+		}
+		$parsed['meta_title'] = $this->truncate($metaTitle, 60);
+
+		$metaDescription = trim((string) ($parsed['meta_description'] ?? ''));
+		if ($metaDescription === '') {
+			$metaDescription = $excerpt;
+		}
+		$parsed['meta_description'] = $this->truncate($metaDescription, 160);
+
+		$ogTitle = trim((string) ($parsed['og_title'] ?? ''));
+		if ($ogTitle === '') {
+			$ogTitle = $parsed['meta_title'];
+		}
+		$parsed['og_title'] = $this->truncate($ogTitle, 70);
+
+		$ogDescription = trim((string) ($parsed['og_description'] ?? ''));
+		if ($ogDescription === '') {
+			$ogDescription = $parsed['meta_description'];
+		}
+		$parsed['og_description'] = $this->truncate($ogDescription, 200);
+
+		$parsed['faq'] = $this->parseFaq($parsed['faq'] ?? []);
+
+		return $parsed;
+	}
+
+	private function truncate(string $text, int $max): string
+	{
+		$text = trim(preg_replace('/\s+/', ' ', $text));
+		if ($text === '' || mb_strlen($text) <= $max) {
+			return $text;
+		}
+		return rtrim(mb_substr($text, 0, $max - 3)) . '...';
 	}
 
 	private function fallbackTitle($topic)

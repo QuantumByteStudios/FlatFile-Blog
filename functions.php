@@ -225,6 +225,283 @@ function post_read_time_minutes(array $post): int
 }
 
 /**
+ * Absolute URL helpers — single source of truth for live domain output.
+ */
+function get_site_base_url(): string
+{
+    $base = defined('BASE_URL') ? (string) constant('BASE_URL') : '/';
+    $settings = load_settings();
+    if (!empty($settings['site_url'])) {
+        $base = (string) $settings['site_url'];
+    }
+
+    return normalize_base_url($base);
+}
+
+function normalize_base_url(string $url): string
+{
+    $url = trim($url);
+    if ($url === '') {
+        return '/';
+    }
+    if (!preg_match('#^https?://#i', $url)) {
+        $url = '/' . ltrim($url, '/');
+        return (str_ends_with($url, '/') || $url === '/') ? $url : $url . '/';
+    }
+    return rtrim($url, '/') . '/';
+}
+
+function is_localhost_host(string $host): bool
+{
+    $host = strtolower(trim($host));
+    return in_array($host, ['localhost', '127.0.0.1', '::1'], true);
+}
+
+function rewrite_localhost_to_live_url(string $url): string
+{
+    $url = trim($url);
+    if ($url === '' || !preg_match('#^https?://#i', $url)) {
+        return $url;
+    }
+
+    $parsed = parse_url($url);
+    if (!$parsed || empty($parsed['host']) || !is_localhost_host($parsed['host'])) {
+        return $url;
+    }
+
+    $base = get_site_base_url();
+    if (!preg_match('#^https?://#i', $base)) {
+        return $url;
+    }
+
+    $base_parsed = parse_url(rtrim($base, '/'));
+    if (!$base_parsed || empty($base_parsed['host']) || is_localhost_host($base_parsed['host'])) {
+        return $url;
+    }
+
+    $scheme = $base_parsed['scheme'] ?? 'https';
+    $port = isset($base_parsed['port']) ? ':' . $base_parsed['port'] : '';
+    $path = $parsed['path'] ?? '';
+    $query = isset($parsed['query']) ? '?' . $parsed['query'] : '';
+    $fragment = isset($parsed['fragment']) ? '#' . $parsed['fragment'] : '';
+
+    return $scheme . '://' . $base_parsed['host'] . $port . $path . $query . $fragment;
+}
+
+function dedupe_malformed_absolute_url(string $url): string
+{
+    if (preg_match_all('#https?://[^\s\'"<>]+#i', $url, $matches) && count($matches[0]) > 1) {
+        return (string) end($matches[0]);
+    }
+
+    $base = get_site_base_url();
+    if (!preg_match('#^https?://#i', $base)) {
+        return $url;
+    }
+
+    $base_parsed = parse_url(rtrim($base, '/'));
+    if (!$base_parsed || empty($base_parsed['host'])) {
+        return $url;
+    }
+
+    $host = $base_parsed['host'];
+    $needle = $host . '/' . $host;
+    if (str_contains($url, $needle)) {
+        $pos = strrpos($url, '://' . $host);
+        if ($pos !== false) {
+            return substr($url, $pos);
+        }
+    }
+
+    $scheme = $base_parsed['scheme'] ?? 'https';
+    $origin = $scheme . '://' . $host;
+    if (substr_count($url, $origin) > 1) {
+        $pos = strrpos($url, $origin);
+        if ($pos !== false) {
+            return substr($url, $pos);
+        }
+    }
+
+    $base_path = rtrim($base_parsed['path'] ?? '', '/');
+    if ($base_path !== '' && $base_path !== '/') {
+        $double = $base_path . $base_path;
+        $parsed = parse_url($url);
+        if ($parsed && isset($parsed['path']) && str_starts_with($parsed['path'], $double)) {
+            $parsed['path'] = $base_path . substr($parsed['path'], strlen($double));
+            return rebuild_parsed_url($parsed);
+        }
+    }
+
+    return $url;
+}
+
+function rebuild_parsed_url(array $parts): string
+{
+    $url = '';
+    if (!empty($parts['scheme'])) {
+        $url .= $parts['scheme'] . '://';
+    }
+    if (!empty($parts['host'])) {
+        $url .= $parts['host'];
+    }
+    if (!empty($parts['port'])) {
+        $url .= ':' . $parts['port'];
+    }
+    $url .= $parts['path'] ?? '';
+    if (!empty($parts['query'])) {
+        $url .= '?' . $parts['query'];
+    }
+    if (!empty($parts['fragment'])) {
+        $url .= '#' . $parts['fragment'];
+    }
+    return $url;
+}
+
+function absolute_url(string $path = ''): string
+{
+    $path = trim($path);
+    $base = get_site_base_url();
+
+    if ($path !== '' && preg_match('#^https?://#i', $path)) {
+        return normalize_absolute_url($path);
+    }
+
+    if (preg_match('#^https?://#i', $base)) {
+        $root = rtrim($base, '/');
+        if ($path === '' || $path === '/') {
+            return $root . '/';
+        }
+        return $root . '/' . ltrim($path, '/');
+    }
+
+    $root = rtrim($base, '/');
+    if ($path === '') {
+        return $root . '/';
+    }
+    return $root . '/' . ltrim($path, '/');
+}
+
+function normalize_absolute_url(string $url, string $fallback_path = ''): string
+{
+    $url = trim($url);
+    if ($url === '') {
+        return $fallback_path !== '' ? absolute_url($fallback_path) : '';
+    }
+
+    $url = dedupe_malformed_absolute_url($url);
+    $url = rewrite_localhost_to_live_url($url);
+
+    if (!preg_match('#^https?://#i', $url)) {
+        return absolute_url($url);
+    }
+
+    return dedupe_malformed_absolute_url($url);
+}
+
+function normalize_stored_media_url(string $url): string
+{
+    $url = trim($url);
+    if ($url === '') {
+        return '';
+    }
+    return normalize_absolute_url($url);
+}
+
+/**
+ * Rewrite localhost / duplicate URLs inside a post document.
+ */
+function normalize_post_stored_urls(array &$post): bool
+{
+    $changed = false;
+
+    if (!empty($post['seo']['canonical_url'])) {
+        $slug_path = !empty($post['slug']) ? rawurlencode((string) $post['slug']) : '';
+        $new = normalize_absolute_url((string) $post['seo']['canonical_url'], $slug_path);
+        if ($new !== $post['seo']['canonical_url']) {
+            $post['seo']['canonical_url'] = $new;
+            $changed = true;
+        }
+    }
+
+    if (!empty($post['meta']['image'])) {
+        $new = normalize_stored_media_url((string) $post['meta']['image']);
+        if ($new !== $post['meta']['image']) {
+            $post['meta']['image'] = $new;
+            $changed = true;
+        }
+    }
+
+    if (!empty($post['og']['image'])) {
+        $new = normalize_stored_media_url((string) $post['og']['image']);
+        if ($new !== $post['og']['image']) {
+            $post['og']['image'] = $new;
+            $changed = true;
+        }
+    }
+
+    return $changed;
+}
+
+/**
+ * Fix all posts + site settings media URLs (e.g. after changing live domain).
+ */
+function migrate_all_stored_urls_to_live_domain(): int
+{
+    $changed = 0;
+    $posts_dir = CONTENT_DIR . 'posts/';
+    if (is_dir($posts_dir)) {
+        foreach (glob($posts_dir . '*.json') ?: [] as $file) {
+            $post = json_decode((string) file_get_contents($file), true);
+            if (!$post) {
+                continue;
+            }
+            if (normalize_post_stored_urls($post)) {
+                file_put_contents($file, json_encode($post, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+                $changed++;
+            }
+        }
+        if ($changed > 0) {
+            rebuild_index();
+        }
+    }
+
+    $settings_file = CONTENT_DIR . 'settings.json';
+    if (file_exists($settings_file)) {
+        $settings = json_decode((string) file_get_contents($settings_file), true) ?: [];
+        $settings_changed = false;
+        if (!empty($settings['favicon_url'])) {
+            $new = normalize_stored_media_url((string) $settings['favicon_url']);
+            if ($new !== $settings['favicon_url']) {
+                $settings['favicon_url'] = $new;
+                $settings_changed = true;
+            }
+        }
+        if ($settings_changed) {
+            file_put_contents($settings_file, json_encode($settings, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+            $changed++;
+        }
+    }
+
+    write_robots_txt();
+    return $changed;
+}
+
+function write_robots_txt(): bool
+{
+    $sitemap = rtrim(get_site_base_url(), '/') . '/sitemap';
+    $content = "User-agent: *\n"
+        . "Disallow: /admin/\n"
+        . "Disallow: /content/\n"
+        . "Disallow: /logs/\n"
+        . "Disallow: /libs/\n"
+        . "Disallow: /uploads/\n"
+        . "Allow: /uploads/featured/\n\n"
+        . "Sitemap: " . $sitemap . "\n";
+    $path = dirname(__FILE__) . '/robots.txt';
+    return file_put_contents($path, $content) !== false;
+}
+
+/**
  * SEO field helpers with fallbacks
  */
 function post_meta_title(array $post): string
@@ -253,11 +530,13 @@ function post_meta_description(array $post, string $html_fallback = ''): string
 
 function post_canonical_url(array $post): string
 {
+    $slug = (string) ($post['slug'] ?? '');
+    $slug_path = $slug !== '' ? rawurlencode($slug) : '';
     $seo = $post['seo'] ?? [];
     if (!empty($seo['canonical_url'])) {
-        return (string) $seo['canonical_url'];
+        return normalize_absolute_url((string) $seo['canonical_url'], $slug_path);
     }
-    return rtrim(BASE_URL, '/') . '/' . rawurlencode($post['slug'] ?? '');
+    return absolute_url($slug_path);
 }
 
 function post_robots_index(array $post): bool
@@ -289,7 +568,8 @@ function post_og_description(array $post, string $html_fallback = ''): string
  */
 function post_featured_image_url(array $post): string
 {
-    return trim((string) ($post['meta']['image'] ?? ''));
+    $url = trim((string) ($post['meta']['image'] ?? ''));
+    return $url === '' ? '' : normalize_stored_media_url($url);
 }
 
 /**
@@ -313,7 +593,7 @@ function post_og_image(array $post): string
         return $featured;
     }
 
-    return $dedicated;
+    return $dedicated === '' ? '' : normalize_stored_media_url($dedicated);
 }
 
 function post_use_twitter_card(array $post): bool
@@ -411,8 +691,8 @@ function build_table_of_contents(string $html): array
  */
 function render_post_breadcrumbs(array $post): string
 {
-    $home = rtrim(BASE_URL, '/') . '/';
-    $blogs = rtrim(BASE_URL, '/') . '/blogs';
+    $home = absolute_url('/');
+    $blogs = absolute_url('blogs');
     $title = htmlspecialchars($post['title'] ?? '', ENT_QUOTES, 'UTF-8');
     $html = '<nav aria-label="breadcrumb" class="mb-3"><ol class="breadcrumb">';
     $html .= '<li class="breadcrumb-item"><a href="' . htmlspecialchars($home, ENT_QUOTES, 'UTF-8') . '">Home</a></li>';
@@ -437,13 +717,13 @@ function post_breadcrumb_schema(array $post): array
             '@type' => 'ListItem',
             'position' => 1,
             'name' => 'Home',
-            'item' => rtrim(BASE_URL, '/') . '/'
+            'item' => absolute_url('/')
         ],
         [
             '@type' => 'ListItem',
             'position' => 2,
             'name' => 'Blog',
-            'item' => rtrim(BASE_URL, '/') . '/blogs'
+            'item' => absolute_url('blogs')
         ]
     ];
     $pos = 3;
@@ -453,7 +733,7 @@ function post_breadcrumb_schema(array $post): array
             '@type' => 'ListItem',
             'position' => $pos++,
             'name' => $cat,
-            'item' => rtrim(BASE_URL, '/') . '/?category=' . rawurlencode($cat)
+            'item' => absolute_url('?category=' . rawurlencode($cat))
         ];
     }
     $items[] = [
@@ -475,7 +755,8 @@ function post_breadcrumb_schema(array $post): array
 function site_favicon_url(): string
 {
     $settings = load_settings();
-    return (string) ($settings['favicon_url'] ?? '');
+    $url = trim((string) ($settings['favicon_url'] ?? ''));
+    return $url === '' ? '' : normalize_stored_media_url($url);
 }
 
 /**
@@ -1134,7 +1415,7 @@ function generate_excerpt($content, $length = 200)
  */
 function get_post_url($slug)
 {
-    return BASE_URL . 'post.php?slug=' . urlencode($slug);
+    return absolute_url(rawurlencode((string) $slug));
 }
 
 /**

@@ -284,7 +284,8 @@ if (!headers_sent()) {
             'enable_sitemap' => true,
             'theme' => 'default',
             'language' => 'en',
-            'favicon_url' => ''
+            'favicon_url' => '',
+            'site_url' => rtrim($base_url, '/') . '/'
         ];
 
         if ($interface_mode === 'custom') {

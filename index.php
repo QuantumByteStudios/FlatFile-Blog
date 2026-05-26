@@ -72,7 +72,7 @@ $favicon = site_favicon_url();
 // Page title
 $page_title = $settings['site_title'] ?? 'FlatFile Blog';
 $site_description = $settings['site_description'] ?? 'A simple, fast, and secure flat-file blog system.';
-$blogs_list_url = rtrim(BASE_URL, '/') . '/blogs';
+$blogs_list_url = absolute_url('blogs');
 ?>
 <!DOCTYPE html>
 <html lang="en">

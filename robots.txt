@@ -6,4 +6,5 @@ Disallow: /libs/
 Disallow: /uploads/
 Allow: /uploads/featured/
 
-Sitemap: http://localhost/FlatFile-Blog/sitemap
+# Sitemap URL is regenerated when you save Settings (Live Site URL).
+# Set your live domain under Admin → Settings → Live Site URL.

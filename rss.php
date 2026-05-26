@@ -59,7 +59,7 @@ if ($interface_mode === 'custom') {
             'word_count' => $post['word_count'] ?? post_word_count($post),
             'read_time' => $post['read_time'] ?? post_read_time_minutes($post),
             'sitemap_priority' => post_sitemap_priority($post),
-            'url' => rtrim(BASE_URL, '/') . '/' . rawurlencode($post['slug'] ?? '')
+            'url' => absolute_url(rawurlencode($post['slug'] ?? ''))
         ];
     }
 
@@ -67,7 +67,7 @@ if ($interface_mode === 'custom') {
         'mode' => 'custom',
         'site' => [
             'title' => SITE_TITLE,
-            'base_url' => BASE_URL,
+            'base_url' => get_site_base_url(),
             'description' => $settings['site_description'] ?? '',
             'favicon_url' => site_favicon_url()
         ],
@@ -93,31 +93,31 @@ echo '<?xml version="1.0" encoding="UTF-8"?>';
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/">
     <channel>
         <title><?php echo htmlspecialchars(SITE_TITLE); ?></title>
-        <link><?php echo BASE_URL; ?></link>
+        <link><?php echo htmlspecialchars(absolute_url('/'), ENT_QUOTES, 'UTF-8'); ?></link>
         <description>A fast, lightweight flat-file blog system built with PHP and Bootstrap</description>
         <language>en-us</language>
         <lastBuildDate><?php echo date('r'); ?></lastBuildDate>
         <generator>FlatFile Blog v1.0</generator>
         <managingEditor>
-            <?php echo htmlspecialchars($posts[0]['author'] ?? 'admin'); ?>@<?php echo parse_url(BASE_URL, PHP_URL_HOST); ?>
+            <?php echo htmlspecialchars($posts[0]['author'] ?? 'admin'); ?>@<?php echo parse_url(get_site_base_url(), PHP_URL_HOST); ?>
         </managingEditor>
         <webMaster>
-            <?php echo htmlspecialchars($posts[0]['author'] ?? 'admin'); ?>@<?php echo parse_url(BASE_URL, PHP_URL_HOST); ?>
+            <?php echo htmlspecialchars($posts[0]['author'] ?? 'admin'); ?>@<?php echo parse_url(get_site_base_url(), PHP_URL_HOST); ?>
         </webMaster>
         <ttl>60</ttl>
-        <atom:link href="<?php echo BASE_URL; ?>rss" rel="self" type="application/rss+xml" />
+        <atom:link href="<?php echo htmlspecialchars(absolute_url('rss'), ENT_QUOTES, 'UTF-8'); ?>" rel="self" type="application/rss+xml" />
 
         <?php if (!empty($posts)): ?>
             <?php foreach ($posts as $post): ?>
                 <item>
                     <title><?php echo htmlspecialchars($post['title']); ?></title>
-                    <link><?php echo BASE_URL; ?><?php echo urlencode($post['slug']); ?></link>
+                    <link><?php echo htmlspecialchars(absolute_url(rawurlencode($post['slug'])), ENT_QUOTES, 'UTF-8'); ?></link>
                     <description>
                         <![CDATA[<?php echo htmlspecialchars($post['excerpt'] ?: substr(strip_tags($post['content'] ?? ''), 0, 200) . '...'); ?>]]>
                     </description>
                     <pubDate><?php echo date('r', strtotime($post['date'])); ?></pubDate>
-                    <guid isPermaLink="true"><?php echo BASE_URL; ?><?php echo urlencode($post['slug']); ?></guid>
-                    <author><?php echo htmlspecialchars($post['author']); ?>@<?php echo parse_url(BASE_URL, PHP_URL_HOST); ?>
+                    <guid isPermaLink="true"><?php echo htmlspecialchars(absolute_url(rawurlencode($post['slug'])), ENT_QUOTES, 'UTF-8'); ?></guid>
+                    <author><?php echo htmlspecialchars($post['author']); ?>@<?php echo parse_url(get_site_base_url(), PHP_URL_HOST); ?>
                     </author>
                     <dc:creator><?php echo htmlspecialchars($post['author']); ?></dc:creator>
                     <?php if (!empty($post['tags'])): ?>
@@ -126,7 +126,7 @@ echo '<?xml version="1.0" encoding="UTF-8"?>';
                         <?php endforeach; ?>
                     <?php endif; ?>
                     <?php if (!empty($post['meta']['image'])): ?>
-                        <enclosure url="<?php echo htmlspecialchars($post['meta']['image']); ?>" type="image/jpeg" />
+                        <enclosure url="<?php echo htmlspecialchars(normalize_stored_media_url($post['meta']['image']), ENT_QUOTES, 'UTF-8'); ?>" type="image/jpeg" />
                     <?php endif; ?>
                 </item>
             <?php endforeach; ?>
