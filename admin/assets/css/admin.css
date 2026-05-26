@@ -81,6 +81,30 @@ body {
     color: #333;
 }
 
+/* When we use Bootstrap dark header helpers (bg-primary) in the CMS cards,
+   ensure header text and outline buttons remain readable. */
+.card-header.bg-primary,
+.card-header.bg-primary.bg-opacity-10,
+.card-header.bg-primary.bg-opacity-25,
+.card-header.bg-primary.bg-opacity-50,
+.card-header.bg-primary.bg-opacity-75,
+.card-header.bg-primary.bg-opacity-100 {
+    color: #fff;
+}
+
+.card-header.bg-primary .btn-outline-primary {
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.85);
+}
+
+.card-header.bg-primary .btn-outline-primary:hover,
+.card-header.bg-primary .btn-outline-primary:focus,
+.card-header.bg-primary .btn-outline-primary:active {
+    background-color: #fff;
+    border-color: #fff;
+    color: #000;
+}
+
 /* Stats Cards */
 .stats-card {
     border-radius: 12px;
