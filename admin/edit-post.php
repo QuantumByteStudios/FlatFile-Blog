@@ -75,6 +75,9 @@ if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
+$all_posts = all_posts();
+$all_categories = collect_all_categories();
+
 // Handle success/error messages from URL parameters
 if (isset($_GET['success'])) {
     $success_message = htmlspecialchars(urldecode($_GET['success']), ENT_QUOTES, 'UTF-8');
@@ -101,7 +104,7 @@ if (isset($_GET['error'])) {
     <link href="<?php echo BASE_URL; ?>admin/assets/css/admin.css" rel="stylesheet">
 </head>
 
-<body class="bg-light">
+<body class="bg-light" data-base-url="<?php echo htmlspecialchars(BASE_URL, ENT_QUOTES, 'UTF-8'); ?>">
     <div class="container-fluid">
         <div class="row">
             <!-- Sidebar -->
@@ -187,9 +190,10 @@ if (isset($_GET['error'])) {
                                     </div>
                                     <div class="card-body">
                                         <div class="mb-3">
-                                            <label for="title" class="form-label">Title *</label>
+                                            <label for="title" class="form-label">H1 / Blog Title *</label>
                                             <input type="text" class="form-control" id="title" name="title"
                                                 value="<?php echo htmlspecialchars($post['title']); ?>" required>
+                                            <div class="form-text">Displayed as the main heading; can differ from meta title.</div>
                                         </div>
 
                                         <div class="mb-3">
@@ -199,7 +203,7 @@ if (isset($_GET['error'])) {
                                         </div>
 
                                         <div class="mb-3">
-                                            <label for="excerpt" class="form-label">Excerpt</label>
+                                            <label for="excerpt" class="form-label">Excerpt / Short Description</label>
                                             <textarea class="form-control" id="excerpt" name="excerpt" rows="3"
                                                 placeholder="Brief description of the post"><?php echo htmlspecialchars($post['excerpt'] ?? ''); ?></textarea>
                                         </div>
@@ -270,6 +274,12 @@ if (isset($_GET['error'])) {
                                         </div>
 
                                         <div class="mb-3">
+                                            <label for="featured_image_alt" class="form-label">Featured Image Alt Text</label>
+                                            <input type="text" class="form-control" id="featured_image_alt" name="featured_image_alt"
+                                                value="<?php echo htmlspecialchars($post['meta']['image_alt'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+                                        </div>
+
+                                        <div class="mb-3">
                                             <label for="date" class="form-label">Publish Date/Time</label>
                                             <input type="datetime-local" class="form-control" id="date" name="date"
                                                 value="<?php echo htmlspecialchars(date('Y-m-d\\TH:i', strtotime($post['date']))); ?>">
@@ -299,13 +309,25 @@ if (isset($_GET['error'])) {
                                         </div>
 
                                         <div class="mb-3">
-                                            <label for="categories" class="form-label">Categories</label>
-                                            <input type="text" class="form-control" id="categories" name="categories"
-                                                value="<?php echo htmlspecialchars(implode(', ', $post['categories'] ?? [])); ?>"
-                                                placeholder="category1, category2">
+                                            <label class="form-label">Categories</label>
+                                            <?php foreach ($all_categories as $cat): ?>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="categories[]"
+                                                        value="<?php echo htmlspecialchars($cat, ENT_QUOTES, 'UTF-8'); ?>"
+                                                        id="cat_<?php echo htmlspecialchars(md5($cat), ENT_QUOTES, 'UTF-8'); ?>"
+                                                        <?php echo in_array($cat, $post['categories'] ?? [], true) ? 'checked' : ''; ?>>
+                                                    <label class="form-check-label" for="cat_<?php echo htmlspecialchars(md5($cat), ENT_QUOTES, 'UTF-8'); ?>">
+                                                        <?php echo htmlspecialchars($cat, ENT_QUOTES, 'UTF-8'); ?>
+                                                    </label>
+                                                </div>
+                                            <?php endforeach; ?>
+                                            <input type="text" class="form-control form-control-sm mt-2" name="new_category"
+                                                placeholder="Add new category">
                                         </div>
                                     </div>
                                 </div>
+
+                                <?php $current_slug = $post['slug']; include __DIR__ . '/includes/post-cms-fields.php'; ?>
 
                                 <!-- Actions -->
                                 <div class="card">
@@ -330,6 +352,7 @@ if (isset($_GET['error'])) {
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="<?php echo BASE_URL; ?>assets/js/admin-edit-post.js"></script>
+    <script src="<?php echo BASE_URL; ?>assets/js/admin-post-cms.js"></script>
 </body>
 
 </html>

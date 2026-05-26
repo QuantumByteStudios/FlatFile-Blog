@@ -95,15 +95,7 @@ class SelfUpdater
         $dirEntries = glob($extractDir . '*', GLOB_ONLYDIR);
         $sourceDir = $dirEntries && is_dir($dirEntries[0]) ? rtrim($dirEntries[0], '\\/') : rtrim($extractDir, '\\/');
 
-        // Copy files while preserving user data
-        $excludes = [
-            '/content/',
-            '/uploads/',
-            '/logs/',
-            '/config.php',
-            '/content/settings.json',
-            '/install.php'
-        ];
+        $excludes = self::getUpdateExcludes();
         $copy = self::copyRecursive($sourceDir, dirname(__DIR__), $excludes);
         if (!$copy['success']) {
             return ['success' => false, 'error' => $copy['error'] ?? 'Copy failed', 'mode' => 'zip', 'logs' => array_merge($gitAttemptLogs, [
@@ -167,14 +159,7 @@ class SelfUpdater
             $sourceDir = rtrim($entries[0], '\/');
         }
 
-        $excludes = [
-            '/content/',
-            '/uploads/',
-            '/logs/',
-            '/config.php',
-            '/content/settings.json',
-            '/install.php'
-        ];
+        $excludes = self::getUpdateExcludes();
         $copy = self::copyRecursive($sourceDir, dirname(__DIR__), $excludes);
         if (!$copy['success']) {
             return $copy;
@@ -202,7 +187,7 @@ class SelfUpdater
         if (!$ok['success']) return $ok;
         $entries = glob($extractDir . '*', GLOB_ONLYDIR);
         $sourceDir = $entries ? rtrim($entries[0], '\/') : rtrim($extractDir, '\/');
-        $excludes = ['/content/', '/uploads/', '/logs/', '/config.php', '/content/settings.json', '/install.php'];
+        $excludes = self::getUpdateExcludes();
         $copy = self::copyRecursive($sourceDir, dirname(__DIR__), $excludes);
         if (!$copy['success']) return $copy;
         // Ensure install.php is not present post-update
@@ -295,14 +280,8 @@ class SelfUpdater
             $sourceDir = rtrim($extractDir, '\/');
         }
 
-        // Copy files, excluding user content and sensitive files
-        $excludes = [
-            '/content/',
-            '/uploads/',
-            '/logs/',
-            '/config.php',
-            '/content/settings.json'
-        ];
+        $excludes = self::getUpdateExcludes();
+        unset($excludes[array_search('/install.php', $excludes, true)]); // token updates may still ship install.php
 
         $copy = self::copyRecursive($sourceDir, dirname(__DIR__), $excludes);
         if (!$copy['success']) {
@@ -474,8 +453,7 @@ class SelfUpdater
             self::rrmdir($tmpDir);
             return ['success' => false, 'error' => 'git clone failed: ' . $clone['stderr'], 'logs' => $logs];
         }
-        // Copy from clone into project root, excluding user data
-        $excludes = ['/content/', '/uploads/', '/logs/', '/config.php', '/content/settings.json'];
+        $excludes = self::getUpdateExcludes();
         $copy = self::copyRecursive($cloneDir, $root, $excludes);
         self::rrmdir($tmpDir);
         if (!$copy['success']) {
@@ -541,6 +519,63 @@ class SelfUpdater
             }
         }
         return ['success' => true];
+    }
+
+    /**
+     * Paths excluded from self-updates (user data + custom templates when applicable).
+     */
+    private static function getUpdateExcludes(): array
+    {
+        $excludes = [
+            '/content/',
+            '/uploads/',
+            '/logs/',
+            '/config.php',
+            '/content/settings.json',
+            '/install.php',
+            '/.preserve-custom-templates'
+        ];
+
+        if (self::shouldPreserveCustomTemplates()) {
+            $excludes[] = '/index.php';
+            $excludes[] = '/post.php';
+        }
+
+        return $excludes;
+    }
+
+    /**
+     * Custom UI installs keep their own index.php and post.php during updates.
+     */
+    private static function shouldPreserveCustomTemplates(): bool
+    {
+        $root = dirname(__DIR__);
+        if (is_file($root . '/.preserve-custom-templates')) {
+            return true;
+        }
+
+        $configFile = $root . '/config.php';
+        if (is_file($configFile)) {
+            $config = (string) file_get_contents($configFile);
+            if (preg_match("/define\s*\(\s*['\"]INTERFACE_MODE['\"]\s*,\s*['\"]custom['\"]\s*\)/", $config)) {
+                return true;
+            }
+        }
+
+        $settingsFile = $root . '/content/settings.json';
+        if (is_file($settingsFile)) {
+            $settings = json_decode((string) file_get_contents($settingsFile), true);
+            if (is_array($settings)) {
+                if (($settings['interface_mode'] ?? '') === 'custom') {
+                    return true;
+                }
+                if (!empty($settings['preserve_custom_templates'])) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private static function rrmdir($dir)

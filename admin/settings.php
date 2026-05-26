@@ -110,12 +110,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $updater_url = $existing_settings['updater_url'] ?? '';
             $updater_checksum = $existing_settings['updater_checksum'] ?? '';
 
-            // Merge updated settings
+            $favicon_url = $existing_settings['favicon_url'] ?? '';
+            $image_uploader_path = __DIR__ . '/../libs/ImageUploader.php';
+            if (isset($_FILES['favicon']) && $_FILES['favicon']['error'] === UPLOAD_ERR_OK && file_exists($image_uploader_path)) {
+                require_once $image_uploader_path;
+                if (class_exists('ImageUploader')) {
+                    $fav_upload = ImageUploader::upload($_FILES['favicon'], 'site');
+                    if ($fav_upload['success']) {
+                        $favicon_url = $fav_upload['url'];
+                    }
+                }
+            }
+
             $settings = array_merge($existing_settings, [
                 'site_title' => trim($_POST['site_title'] ?? ''),
                 'site_description' => trim($_POST['site_description'] ?? ''),
                 'admin_email' => trim($_POST['admin_email'] ?? ''),
                 'posts_per_page' => (int) ($_POST['posts_per_page'] ?? 10),
+                'favicon_url' => $favicon_url,
                 'business_info' => $business_info,
                 'openai_api_key' => $openai_api_key,
                 'openai_model' => $openai_model,
@@ -172,7 +184,8 @@ $settings = array_merge([
     'updater_branch' => 'main',
     'updater_token' => '',
     'updater_url' => '',
-    'updater_checksum' => ''
+    'updater_checksum' => '',
+    'favicon_url' => ''
 ], $current_settings);
 
 // If no saved key, show env fallback in the textbox for convenience
@@ -285,7 +298,7 @@ function update_config_site_title($new_title)
                             <?php endif; ?>
 
                             <!-- Settings Form -->
-                            <form method="POST" action="<?php echo BASE_URL; ?>admin/settings">
+                            <form method="POST" action="<?php echo BASE_URL; ?>admin/settings" enctype="multipart/form-data">
                                 <input type="hidden" name="action" value="update_settings">
                                 <input type="hidden" name="csrf_token"
                                     value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
@@ -327,6 +340,19 @@ function update_config_site_title($new_title)
                                             <input type="number" class="form-control" id="posts_per_page"
                                                 name="posts_per_page" value="<?php echo $settings['posts_per_page']; ?>"
                                                 min="1" max="50">
+                                        </div>
+
+                                        <div class="mb-4">
+                                            <label for="favicon" class="form-label fw-medium">Site Favicon</label>
+                                            <input type="file" class="form-control" id="favicon" name="favicon"
+                                                accept="image/png,image/x-icon,image/vnd.microsoft.icon,image/jpeg,image/webp,image/gif">
+                                            <div class="form-text text-muted small mt-1">One-time global favicon for the whole site (PNG/ICO recommended).</div>
+                                            <?php if (!empty($settings['favicon_url'])): ?>
+                                                <div class="mt-2">
+                                                    <img src="<?php echo htmlspecialchars($settings['favicon_url'], ENT_QUOTES, 'UTF-8'); ?>" alt="Current favicon" width="32" height="32">
+                                                    <a href="<?php echo htmlspecialchars($settings['favicon_url'], ENT_QUOTES, 'UTF-8'); ?>" class="ms-2 small" target="_blank" rel="noopener">View</a>
+                                                </div>
+                                            <?php endif; ?>
                                         </div>
                                     </div>
 

@@ -57,6 +57,10 @@ if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
+$post = [];
+$all_posts = all_posts();
+$all_categories = collect_all_categories();
+
 // Handle success/error messages from URL parameters
 if (isset($_GET['success'])) {
     $success_message = htmlspecialchars(urldecode($_GET['success']), ENT_QUOTES, 'UTF-8');
@@ -169,25 +173,25 @@ if (isset($_GET['error'])) {
                                     </div>
                                     
                                     <div class="mb-4">
-                                        <label for="title" class="form-label fw-medium">Title *</label>
+                                        <label for="title" class="form-label fw-medium">H1 / Blog Title *</label>
                                         <input type="text" class="form-control" id="title" name="title"
                                             value="<?php echo htmlspecialchars($title ?? ''); ?>" required>
+                                        <div class="form-text text-muted small">Main heading on the post page (separate from meta title).</div>
                                     </div>
 
                                     <div class="mb-4">
-                                        <label for="slug" class="form-label fw-medium">Slug</label>
-                                        <input type="text" class="form-control bg-light" id="slug" name="slug"
+                                        <label for="slug" class="form-label fw-medium">URL Slug</label>
+                                        <input type="text" class="form-control" id="slug" name="slug"
                                             value="<?php echo htmlspecialchars($slug ?? ''); ?>"
-                                            placeholder="auto-generated from title" readonly
-                                            autocomplete="off"
-                                            title="Generated automatically from the title">
+                                            placeholder="auto-generated from title"
+                                            autocomplete="off">
                                         <div class="form-text text-muted small">
-                                            Generated from the title. You can change the title to update the slug before publishing.
+                                            Auto-generated from the title; you can edit it before saving.
                                         </div>
                                     </div>
 
                                     <div class="mb-4">
-                                        <label for="excerpt" class="form-label fw-medium">Excerpt</label>
+                                        <label for="excerpt" class="form-label fw-medium">Excerpt / Short Description</label>
                                         <textarea class="form-control" id="excerpt" name="excerpt" rows="3"
                                             placeholder="Brief description of the post"><?php echo htmlspecialchars($excerpt ?? ''); ?></textarea>
                                     </div>
@@ -257,6 +261,12 @@ if (isset($_GET['error'])) {
                                             name="featured_image" accept="image/*">
                                         <div class="form-text text-muted small mt-1">Upload a featured image for this post (JPG, PNG, GIF, WebP)</div>
                                     </div>
+
+                                    <div class="mb-4">
+                                        <label for="featured_image_alt" class="form-label fw-medium">Featured Image Alt Text</label>
+                                        <input type="text" class="form-control" id="featured_image_alt" name="featured_image_alt"
+                                            value="<?php echo htmlspecialchars($featured_image_alt ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+                                    </div>
                                 </div>
 
                                 <!-- Tags & Categories -->
@@ -275,12 +285,24 @@ if (isset($_GET['error'])) {
                                     </div>
 
                                     <div class="mb-4">
-                                        <label for="categories" class="form-label fw-medium">Categories</label>
-                                        <input type="text" class="form-control" id="categories" name="categories"
-                                            value="<?php echo htmlspecialchars(implode(', ', $categories ?? [])); ?>"
-                                            placeholder="category1, category2">
+                                        <label class="form-label fw-medium">Categories</label>
+                                        <?php foreach ($all_categories as $cat): ?>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="categories[]"
+                                                    value="<?php echo htmlspecialchars($cat, ENT_QUOTES, 'UTF-8'); ?>"
+                                                    id="cat_new_<?php echo htmlspecialchars(md5($cat), ENT_QUOTES, 'UTF-8'); ?>"
+                                                    <?php echo in_array($cat, $categories ?? [], true) ? 'checked' : ''; ?>>
+                                                <label class="form-check-label" for="cat_new_<?php echo htmlspecialchars(md5($cat), ENT_QUOTES, 'UTF-8'); ?>">
+                                                    <?php echo htmlspecialchars($cat, ENT_QUOTES, 'UTF-8'); ?>
+                                                </label>
+                                            </div>
+                                        <?php endforeach; ?>
+                                        <input type="text" class="form-control form-control-sm mt-2" name="new_category"
+                                            placeholder="Add new category">
                                     </div>
                                 </div>
+
+                                <?php $current_slug = ''; include __DIR__ . '/includes/post-cms-fields.php'; ?>
 
                                 <!-- Actions -->
                                 <div class="border-top pt-4">
@@ -336,6 +358,7 @@ if (isset($_GET['error'])) {
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="<?php echo BASE_URL; ?>assets/js/admin-new-post.js"></script>
+    <script src="<?php echo BASE_URL; ?>assets/js/admin-post-cms.js"></script>
 </body>
 
 </html>

@@ -52,7 +52,14 @@ if ($interface_mode === 'custom') {
             'tags' => $post['tags'] ?? [],
             'categories' => $post['categories'] ?? [],
             'meta' => $post['meta'] ?? [],
-            'url' => BASE_URL . urlencode($post['slug'] ?? '')
+            'seo' => $post['seo'] ?? [],
+            'og' => array_merge($post['og'] ?? [], ['effective_image' => post_og_image($post)]),
+            'schema' => $post['schema'] ?? [],
+            'related_posts' => $post['related_posts'] ?? [],
+            'word_count' => $post['word_count'] ?? post_word_count($post),
+            'read_time' => $post['read_time'] ?? post_read_time_minutes($post),
+            'sitemap_priority' => post_sitemap_priority($post),
+            'url' => rtrim(BASE_URL, '/') . '/' . rawurlencode($post['slug'] ?? '')
         ];
     }
 
@@ -61,7 +68,8 @@ if ($interface_mode === 'custom') {
         'site' => [
             'title' => SITE_TITLE,
             'base_url' => BASE_URL,
-            'description' => $settings['site_description'] ?? ''
+            'description' => $settings['site_description'] ?? '',
+            'favicon_url' => site_favicon_url()
         ],
         'generated_at' => date('c'),
         'count' => count($json_posts),

@@ -129,10 +129,27 @@ $last_modified = strtotime($post['updated']);
 header('Last-Modified: ' . gmdate('D, d M Y H:i:s', $last_modified) . ' GMT');
 header('Cache-Control: public, max-age=3600'); // 1 hour cache
 
-// SEO Meta tags
-$page_title = $post['title'] . ' - ' . SITE_TITLE;
-$page_description = !empty($post['excerpt']) ? $post['excerpt'] : substr(strip_tags($html_content), 0, 160);
-$canonical_url = BASE_URL . urlencode($post['slug']);
+$toc_result = build_table_of_contents($html_content);
+$html_content = $toc_result['html'];
+$table_of_contents = $toc_result['toc'];
+
+$page_title = post_meta_title($post) . ' - ' . SITE_TITLE;
+$page_description = post_meta_description($post, $html_content);
+$canonical_url = post_canonical_url($post);
+$og_title = post_og_title($post);
+$og_description = post_og_description($post, $html_content);
+$og_image = post_og_image($post);
+$robots_index = post_robots_index($post);
+$read_time = $post['read_time'] ?? post_read_time_minutes($post);
+$word_count = $post['word_count'] ?? post_word_count($post);
+$related_posts = get_related_posts($post, 3);
+$favicon = site_favicon_url();
+$schema_settings = $post['schema'] ?? [];
+$show_article_schema = !isset($schema_settings['article']) || $schema_settings['article'] !== false;
+$show_breadcrumb_schema = !isset($schema_settings['breadcrumb']) || $schema_settings['breadcrumb'] !== false;
+$faq_schema = $schema_settings['faq'] ?? [];
+$share_url = rawurlencode($canonical_url);
+$share_title = rawurlencode($post['title']);
 
 ?>
 <!DOCTYPE html>
@@ -144,26 +161,31 @@ $canonical_url = BASE_URL . urlencode($post['slug']);
 	<title><?php echo htmlspecialchars($page_title); ?></title>
 	<meta name="description" content="<?php echo htmlspecialchars($page_description); ?>">
 	<meta name="author" content="<?php echo htmlspecialchars($post['author']); ?>">
-
-	<!-- Canonical URL -->
-	<link rel="canonical" href="<?php echo $canonical_url; ?>">
-
-	<!-- Open Graph Meta Tags -->
-	<meta property="og:title" content="<?php echo htmlspecialchars($post['title']); ?>">
-	<meta property="og:description" content="<?php echo htmlspecialchars($page_description); ?>">
-	<meta property="og:type" content="article">
-	<meta property="og:url" content="<?php echo $canonical_url; ?>">
-	<meta property="og:site_name" content="<?php echo SITE_TITLE; ?>">
-	<?php if (!empty($post['meta']['image'])): ?>
-		<meta property="og:image" content="<?php echo htmlspecialchars($post['meta']['image']); ?>">
+	<?php if (!$robots_index): ?>
+		<meta name="robots" content="noindex, nofollow">
+	<?php endif; ?>
+	<?php if ($favicon !== ''): ?>
+		<link rel="icon" href="<?php echo htmlspecialchars($favicon, ENT_QUOTES, 'UTF-8'); ?>">
 	<?php endif; ?>
 
-	<!-- Twitter Card Meta Tags -->
-	<meta name="twitter:card" content="summary_large_image">
-	<meta name="twitter:title" content="<?php echo htmlspecialchars($post['title']); ?>">
-	<meta name="twitter:description" content="<?php echo htmlspecialchars($page_description); ?>">
-	<?php if (!empty($post['meta']['image'])): ?>
-		<meta name="twitter:image" content="<?php echo htmlspecialchars($post['meta']['image']); ?>">
+	<link rel="canonical" href="<?php echo htmlspecialchars($canonical_url, ENT_QUOTES, 'UTF-8'); ?>">
+
+	<meta property="og:title" content="<?php echo htmlspecialchars($og_title); ?>">
+	<meta property="og:description" content="<?php echo htmlspecialchars($og_description); ?>">
+	<meta property="og:type" content="article">
+	<meta property="og:url" content="<?php echo htmlspecialchars($canonical_url, ENT_QUOTES, 'UTF-8'); ?>">
+	<meta property="og:site_name" content="<?php echo SITE_TITLE; ?>">
+	<?php if ($og_image !== ''): ?>
+		<meta property="og:image" content="<?php echo htmlspecialchars($og_image); ?>">
+	<?php endif; ?>
+
+	<?php if (post_use_twitter_card($post)): ?>
+		<meta name="twitter:card" content="summary_large_image">
+		<meta name="twitter:title" content="<?php echo htmlspecialchars($og_title); ?>">
+		<meta name="twitter:description" content="<?php echo htmlspecialchars($og_description); ?>">
+		<?php if ($og_image !== ''): ?>
+			<meta name="twitter:image" content="<?php echo htmlspecialchars($og_image); ?>">
+		<?php endif; ?>
 	<?php endif; ?>
 
 	<!-- Article Meta -->
@@ -202,9 +224,21 @@ $canonical_url = BASE_URL . urlencode($post['slug']);
 		<div class="row justify-content-center">
 			<div class="col-lg-8">
 
+				<?php echo render_post_breadcrumbs($post); ?>
+
+				<p class="text-muted small mb-3">
+					<i class="bi bi-clock"></i> <?php echo (int) $read_time; ?> min read
+					&middot; <?php echo (int) $word_count; ?> words
+					&middot; <?php echo htmlspecialchars($post['author']); ?>
+				</p>
+
 				<!-- Share Icons -->
-				<div class="mb-3 d-flex gap-3 align-items-center">
-					<a href="https://www.linkedin.com/sharing/share-offsite/?url=<?php echo urlencode($canonical_url); ?>&amp;title=<?php echo urlencode($post['title']); ?>"
+				<div class="mb-3 d-flex gap-3 align-items-center flex-wrap">
+					<a href="https://wa.me/?text=<?php echo $share_title; ?>%20<?php echo $share_url; ?>"
+						class="text-dark" target="_blank" rel="noopener" title="Share on WhatsApp">WhatsApp</a>
+					<a href="https://www.facebook.com/sharer/sharer.php?u=<?php echo $share_url; ?>"
+						class="text-dark" target="_blank" rel="noopener" title="Share on Facebook">Facebook</a>
+					<a href="https://www.linkedin.com/sharing/share-offsite/?url=<?php echo $share_url; ?>&amp;title=<?php echo $share_title; ?>"
 						class="text-dark" target="_blank" rel="noopener" title="Share on LinkedIn"
 						style="line-height:1;">
 						<svg width="28" height="28" class="linkedin" viewBox="0 0 28 28"
@@ -221,7 +255,7 @@ $canonical_url = BASE_URL . urlencode($post['slug']);
 							</defs>
 						</svg>
 					</a>
-					<a href="https://twitter.com/intent/tweet?url=<?php echo urlencode($canonical_url); ?>&amp;text=<?php echo urlencode($post['title']); ?>"
+					<a href="https://twitter.com/intent/tweet?url=<?php echo $share_url; ?>&amp;text=<?php echo $share_title; ?>"
 						class="text-dark" target="_blank" rel="noopener" title="Share on X" style="line-height:1;">
 						<svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
 							<rect width="28" height="28" rx="4" fill="#43414F"></rect>
@@ -250,7 +284,7 @@ $canonical_url = BASE_URL . urlencode($post['slug']);
 					<?php if (!empty($post['meta']['image'])): ?>
 						<div class="featured-image mb-4">
 							<img src="<?php echo htmlspecialchars($post['meta']['image']); ?>"
-								alt="<?php echo htmlspecialchars($post['title']); ?>" class="img-fluid">
+								alt="<?php echo htmlspecialchars($post['meta']['image_alt'] ?? $post['title']); ?>" class="img-fluid">
 						</div>
 					<?php endif; ?>
 
@@ -274,10 +308,29 @@ $canonical_url = BASE_URL . urlencode($post['slug']);
 					</div> -->
 				</header>
 
+				<?php if ($table_of_contents !== ''): ?>
+					<?php echo $table_of_contents; ?>
+				<?php endif; ?>
+
 				<!-- Post Content -->
 				<article class="post-content">
 					<?php echo $html_content; ?>
 				</article>
+
+				<?php if ($related_posts !== []): ?>
+					<section class="mt-5 pt-4 border-top">
+						<h2 class="h5 mb-3">Related posts</h2>
+						<ul class="list-unstyled">
+							<?php foreach ($related_posts as $rp): ?>
+								<li class="mb-2">
+									<a href="<?php echo htmlspecialchars(rtrim(BASE_URL, '/') . '/' . rawurlencode($rp['slug']), ENT_QUOTES, 'UTF-8'); ?>">
+										<?php echo htmlspecialchars($rp['title'] ?? $rp['slug']); ?>
+									</a>
+								</li>
+							<?php endforeach; ?>
+						</ul>
+					</section>
+				<?php endif; ?>
 
 				<!-- Tags and Categories (moved to end) -->
 				<?php if (!empty($post['tags']) || !empty($post['categories'])): ?>
@@ -352,38 +405,54 @@ $canonical_url = BASE_URL . urlencode($post['slug']);
 			</div>
 	</footer>
 
-	<!-- JSON-LD Structured Data -->
-	<script type="application/ld+json">
-		{
-			"@context": "https://schema.org",
-			"@type": "BlogPosting",
-			"headline": "<?php echo htmlspecialchars($post['title']); ?>",
-			"description": "<?php echo htmlspecialchars($page_description); ?>",
-			"image": "<?php echo !empty($post['meta']['image']) ? htmlspecialchars($post['meta']['image']) : BASE_URL . 'assets/default-image.jpg'; ?>",
-			"author": {
-				"@type": "Person",
-				"name": "<?php echo htmlspecialchars($post['author']); ?>"
-			},
-			"publisher": {
-				"@type": "Organization",
-				"name": "<?php echo SITE_TITLE; ?>",
-				"logo": {
-					"@type": "ImageObject",
-					"url": "<?php echo BASE_URL; ?>assets/logo.png"
-				}
-			},
-			"datePublished": "<?php echo date('c', strtotime($post['date'])); ?>",
-			"dateModified": "<?php echo date('c', strtotime($post['updated'])); ?>",
-			"mainEntityOfPage": {
-				"@type": "WebPage",
-				"@id": "<?php echo $canonical_url; ?>"
-			},
-			"url": "<?php echo $canonical_url; ?>",
-			"keywords": "<?php echo !empty($post['tags']) ? htmlspecialchars(implode(', ', $post['tags'])) : ''; ?>",
-			"articleSection": "<?php echo !empty($post['categories']) ? htmlspecialchars(implode(', ', $post['categories'])) : 'General'; ?>",
-			"wordCount": "<?php echo str_word_count(strip_tags($raw_content)); ?>"
+	<?php if ($show_article_schema): ?>
+	<script type="application/ld+json"><?php echo json_encode([
+		'@context' => 'https://schema.org',
+		'@type' => 'BlogPosting',
+		'headline' => $post['title'],
+		'description' => $page_description,
+		'image' => $og_image !== '' ? $og_image : null,
+		'author' => ['@type' => 'Person', 'name' => $post['author']],
+		'publisher' => ['@type' => 'Organization', 'name' => SITE_TITLE],
+		'datePublished' => date('c', strtotime($post['date'])),
+		'dateModified' => date('c', strtotime($post['updated'])),
+		'mainEntityOfPage' => ['@type' => 'WebPage', '@id' => $canonical_url],
+		'url' => $canonical_url,
+		'keywords' => !empty($post['tags']) ? implode(', ', $post['tags']) : '',
+		'articleSection' => !empty($post['categories']) ? implode(', ', $post['categories']) : 'General',
+		'wordCount' => $word_count
+	], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?></script>
+	<?php endif; ?>
+
+	<?php if ($show_breadcrumb_schema): ?>
+	<script type="application/ld+json"><?php echo json_encode(post_breadcrumb_schema($post), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?></script>
+	<?php endif; ?>
+
+	<?php if ($faq_schema !== []): ?>
+	<script type="application/ld+json"><?php
+		$entities = [];
+		foreach ($faq_schema as $item) {
+			if (empty($item['question']) || empty($item['answer'])) {
+				continue;
+			}
+			$entities[] = [
+				'@type' => 'Question',
+				'name' => $item['question'],
+				'acceptedAnswer' => [
+					'@type' => 'Answer',
+					'text' => $item['answer']
+				]
+			];
 		}
-	</script>
+		if ($entities !== []) {
+			echo json_encode([
+				'@context' => 'https://schema.org',
+				'@type' => 'FAQPage',
+				'mainEntity' => $entities
+			], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+		}
+	?></script>
+	<?php endif; ?>
 
 	<!-- Bootstrap JS -->
 	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

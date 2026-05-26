@@ -61,11 +61,13 @@ if ($interface_mode === 'custom') {
 // Get pagination parameters
 $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
 $per_page = $settings['posts_per_page'] ?? 10;
+$filter_category = isset($_GET['category']) ? trim((string) $_GET['category']) : '';
+$filter_tag = isset($_GET['tag']) ? trim((string) $_GET['tag']) : '';
 
-// Get posts
-$posts = get_posts($page, $per_page);
-$total_posts = count_posts();
+$posts = get_posts($page, $per_page, 'published', $filter_category, $filter_tag);
+$total_posts = count_posts_filtered('published', $filter_category, $filter_tag);
 $pagination = get_pagination_info($total_posts, $per_page, $page);
+$favicon = site_favicon_url();
 
 // Page title
 $page_title = $settings['site_title'] ?? 'FlatFile Blog';
@@ -80,6 +82,9 @@ $blogs_list_url = rtrim(BASE_URL, '/') . '/blogs';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($page_title); ?></title>
     <meta name="description" content="<?php echo htmlspecialchars($site_description); ?>">
+    <?php if ($favicon !== ''): ?>
+        <link rel="icon" href="<?php echo htmlspecialchars($favicon, ENT_QUOTES, 'UTF-8'); ?>">
+    <?php endif; ?>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <link href="<?php echo BASE_URL; ?>assets/css/main.css" rel="stylesheet">

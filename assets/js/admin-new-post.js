@@ -23,8 +23,10 @@ document.addEventListener('DOMContentLoaded', () => {
 		.replace(/[^a-z0-9]+/g, '-')
 		.replace(/^-+|-+$/g, '');
 
+	let slugManuallyEdited = false;
+
 	const syncSlugFromTitle = () => {
-		if (!titleInput || !slugInput) {
+		if (!titleInput || !slugInput || slugManuallyEdited) {
 			return;
 		}
 		slugInput.value = slugFromTitle(titleInput.value);
@@ -47,6 +49,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	if (titleInput && slugInput) {
 		titleInput.addEventListener('input', syncSlugFromTitle);
+		slugInput.addEventListener('input', () => {
+			slugManuallyEdited = slugInput.value.trim() !== '';
+		});
 	}
 
 	syncSlugFromTitle();

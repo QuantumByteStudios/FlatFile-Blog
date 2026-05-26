@@ -45,10 +45,10 @@ echo '<?xml version="1.0" encoding="UTF-8"?>';
             <loc><?php echo BASE_URL; ?><?php echo urlencode($post['slug']); ?></loc>
             <lastmod><?php echo date('c', strtotime($post['updated'])); ?></lastmod>
             <changefreq>monthly</changefreq>
-            <priority>0.9</priority>
-            <?php if (!empty($post['meta']['image'])): ?>
+            <priority><?php echo number_format(post_sitemap_priority($post), 1, '.', ''); ?></priority>
+            <?php $sitemap_image = post_og_image($post); if ($sitemap_image !== ''): ?>
                 <image:image>
-                    <image:loc><?php echo htmlspecialchars($post['meta']['image']); ?></image:loc>
+                    <image:loc><?php echo htmlspecialchars($sitemap_image); ?></image:loc>
                     <image:title><?php echo htmlspecialchars($post['title']); ?></image:title>
                     <image:caption><?php echo htmlspecialchars($post['excerpt'] ?: substr(strip_tags($post['content_markdown'] ?? ''), 0, 200)); ?></image:caption>
                 </image:image>

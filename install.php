@@ -277,13 +277,20 @@ if (!headers_sent()) {
             'admin_email' => $admin_email,
             'timezone' => $timezone,
             'interface_mode' => $interface_mode,
+            'preserve_custom_templates' => $interface_mode === 'custom',
             'posts_per_page' => 10,
             'enable_comments' => false,
             'enable_rss' => true,
             'enable_sitemap' => true,
             'theme' => 'default',
-            'language' => 'en'
+            'language' => 'en',
+            'favicon_url' => ''
         ];
+
+        if ($interface_mode === 'custom') {
+            @file_put_contents(__DIR__ . '/.preserve-custom-templates', date('c') . "\nCustom interface: index.php and post.php are preserved during updates.\n");
+            addStep("Custom templates will be preserved during updates (index.php, post.php)");
+        }
 
         if (!is_path_writable_for_create('content/settings.json')) {
             addError("No write permission for content/settings.json");

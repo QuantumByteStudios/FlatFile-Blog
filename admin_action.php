@@ -183,6 +183,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('HTTP/1.0 403 Forbidden');
         die('Invalid security token.');
     }
+
+    $early_action = $_POST['action'] ?? '';
+    if ($early_action === 'upload_content_image') {
+        header('Content-Type: application/json');
+        if (!class_exists('ImageUploader')) {
+            echo json_encode(['success' => false, 'error' => 'Image upload service is unavailable.']);
+            exit;
+        }
+        if (!isset($_FILES['content_image']) || $_FILES['content_image']['error'] !== UPLOAD_ERR_OK) {
+            echo json_encode(['success' => false, 'error' => 'No image uploaded.']);
+            exit;
+        }
+        $upload_result = ImageUploader::upload($_FILES['content_image'], 'content');
+        echo json_encode($upload_result['success']
+            ? ['success' => true, 'url' => $upload_result['url']]
+            : ['success' => false, 'error' => $upload_result['error'] ?? 'Upload failed']);
+        exit;
+    }
 }
 
 $action = $_POST['action'] ?? '';
@@ -371,18 +389,8 @@ function handle_create_post()
     $updated = date('c', $updated_ts);
     $author = trim($_POST['author'] ?? 'Admin');
 
-    // Parse tags and categories
-    $tags = [];
-    if (!empty($_POST['tags'])) {
-        $tags = array_map('trim', explode(',', $_POST['tags']));
-        $tags = array_filter($tags);
-    }
-
-    $categories = [];
-    if (!empty($_POST['categories'])) {
-        $categories = array_map('trim', explode(',', $_POST['categories']));
-        $categories = array_filter($categories);
-    }
+    $tags = parse_tags_from_post();
+    $categories = parse_categories_from_post();
 
     // Handle featured image upload
     $featured_image = '';
@@ -396,11 +404,9 @@ function handle_create_post()
         }
     }
 
-    // Get content type (align with post.php/edit-post logic)
     $content_type = $_POST['content_type'] ?? 'html';
 
-    // Create post data
-    $post_data = [
+    $post_data = array_merge($post_data, [
         'slug' => $slug,
         'title' => $title,
         'content_type' => $content_type,
@@ -412,11 +418,11 @@ function handle_create_post()
         'tags' => $tags,
         'categories' => $categories,
         'meta' => [
-            'image' => $featured_image
+            'image' => $featured_image,
+            'image_alt' => trim($_POST['featured_image_alt'] ?? '')
         ]
-    ];
+    ]);
 
-    // Store content based on type
     if ($content_type === 'html') {
         $post_data['content_html'] = $content;
         unset($post_data['content_markdown']);
@@ -425,7 +431,8 @@ function handle_create_post()
         unset($post_data['content_html']);
     }
 
-    // Save post
+    apply_cms_fields_to_post($post_data);
+
     if (save_post($post_data)) {
         // Force clear any opcache if enabled
         if (function_exists('opcache_invalidate')) {
@@ -582,17 +589,16 @@ function handle_update_post()
         unset($existing_post['content_html']);
     }
 
-    // Parse tags and categories
-    if (!empty($_POST['tags'])) {
-        $existing_post['tags'] = array_filter(array_map('trim', explode(',', $_POST['tags'])));
-    }
-
-    if (!empty($_POST['categories'])) {
-        $existing_post['categories'] = array_filter(array_map('trim', explode(',', $_POST['categories'])));
-    }
+    $existing_post['tags'] = parse_tags_from_post();
+    $existing_post['categories'] = parse_categories_from_post();
 
     if (!isset($existing_post['meta']) || !is_array($existing_post['meta'])) {
         $existing_post['meta'] = [];
+    }
+
+    $featured_alt = trim($_POST['featured_image_alt'] ?? '');
+    if ($featured_alt !== '') {
+        $existing_post['meta']['image_alt'] = $featured_alt;
     }
 
     $new_featured_upload = isset($_FILES['featured_image']) && $_FILES['featured_image']['error'] === UPLOAD_ERR_OK;
@@ -612,7 +618,10 @@ function handle_update_post()
             delete_featured_image_file_if_local($old_image_url);
         }
         unset($existing_post['meta']['image']);
+        unset($existing_post['meta']['image_alt']);
     }
+
+    apply_cms_fields_to_post($existing_post);
 
     // Save updated post
     if (save_post($existing_post)) {
@@ -657,6 +666,93 @@ function handle_delete_post()
 function is_valid_slug($slug)
 {
     return is_string($slug) && preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $slug);
+}
+
+function parse_tags_from_post(): array
+{
+    if (!empty($_POST['tags'])) {
+        return array_values(array_filter(array_map('trim', explode(',', (string) $_POST['tags']))));
+    }
+    return [];
+}
+
+function parse_categories_from_post(): array
+{
+    $categories = [];
+    if (!empty($_POST['categories']) && is_array($_POST['categories'])) {
+        $categories = array_values(array_filter(array_map('trim', $_POST['categories'])));
+    } elseif (!empty($_POST['categories'])) {
+        $categories = array_values(array_filter(array_map('trim', explode(',', (string) $_POST['categories']))));
+    }
+    $new_cat = trim($_POST['new_category'] ?? '');
+    if ($new_cat !== '') {
+        $categories[] = $new_cat;
+    }
+    return array_values(array_unique($categories));
+}
+
+function apply_cms_fields_to_post(array &$post_data): void
+{
+    $meta_title = trim($_POST['meta_title'] ?? '');
+    $meta_description = trim($_POST['meta_description'] ?? '');
+    $canonical_url = trim($_POST['canonical_url'] ?? '');
+    $robots_index = !empty($_POST['robots_index']);
+
+    $post_data['seo'] = [
+        'meta_title' => $meta_title,
+        'meta_description' => $meta_description,
+        'canonical_url' => $canonical_url,
+        'robots' => $robots_index ? 'index' : 'noindex'
+    ];
+
+    $preserve_og = is_array($post_data['og'] ?? null) ? $post_data['og'] : [];
+    $og = [
+        'title' => trim($_POST['og_title'] ?? ''),
+        'description' => trim($_POST['og_description'] ?? ''),
+        'twitter_card' => !empty($_POST['twitter_card']),
+        'image' => trim((string) ($preserve_og['image'] ?? '')),
+        'image_custom' => !empty($preserve_og['image_custom'])
+    ];
+    if (isset($_FILES['og_image']) && $_FILES['og_image']['error'] === UPLOAD_ERR_OK && class_exists('ImageUploader')) {
+        $og_upload = ImageUploader::upload($_FILES['og_image'], 'og');
+        if ($og_upload['success']) {
+            $og['image'] = $og_upload['url'];
+            $og['image_custom'] = true;
+        }
+    } elseif ($og['image'] === '' || !$og['image_custom']) {
+        // No dedicated OG image — do not store featured URL here; post_og_image() uses thumbnail at render time
+        $og['image'] = '';
+        $og['image_custom'] = false;
+    }
+    $post_data['og'] = $og;
+
+    $faq = [];
+    $questions = $_POST['faq_question'] ?? [];
+    $answers = $_POST['faq_answer'] ?? [];
+    if (is_array($questions)) {
+        foreach ($questions as $i => $q) {
+            $q = trim((string) $q);
+            $a = trim((string) ($answers[$i] ?? ''));
+            if ($q !== '' && $a !== '') {
+                $faq[] = ['question' => $q, 'answer' => $a];
+            }
+        }
+    }
+
+    $post_data['schema'] = [
+        'article' => !empty($_POST['schema_article']),
+        'breadcrumb' => !empty($_POST['schema_breadcrumb']),
+        'faq' => $faq
+    ];
+
+    $priority = $_POST['sitemap_priority'] ?? 0.9;
+    $post_data['sitemap_priority'] = max(0.1, min(1.0, (float) $priority));
+
+    $related = $_POST['related_posts'] ?? [];
+    $post_data['related_posts'] = is_array($related) ? array_slice(array_values(array_filter(array_map('trim', $related))), 0, 3) : [];
+
+    $post_data['word_count'] = post_word_count($post_data);
+    $post_data['read_time'] = post_read_time_minutes($post_data);
 }
 
 function is_duplicate_title(string $title, string $exclude_slug = ''): bool

@@ -68,39 +68,49 @@ function save_settings($settings)
 /**
  * Get all blog posts
  */
-function get_posts($page = 1, $per_page = 10, $status = 'published')
+function get_posts($page = 1, $per_page = 10, $status = 'published', $category = '', $tag = '')
 {
-    $posts = [];
     $posts_dir = CONTENT_DIR . 'posts/';
 
     if (!file_exists($posts_dir)) {
-        return $posts;
+        return [];
     }
 
-    // Clear stat cache to ensure fresh file listings
     clearstatcache(true, $posts_dir);
     $files = glob($posts_dir . '*.json');
     $all_posts = [];
     $current_time = time();
+    $category_filter = trim($category);
+    $tag_filter = trim($tag);
 
     foreach ($files as $file) {
-        // Clear stat cache for each file before reading
         clearstatcache(true, $file);
         $post_data = json_decode(file_get_contents($file), true);
         if (!$post_data) {
             continue;
         }
 
-        // Check status filter
         if ($status !== 'all' && ($post_data['status'] ?? '') !== $status) {
             continue;
         }
 
-        // For published posts, check if date is in the future (scheduling)
         if ($status === 'published' && ($post_data['status'] ?? '') === 'published') {
             $post_date = isset($post_data['date']) ? strtotime($post_data['date']) : 0;
-            // If post date is in the future, exclude it (not published yet)
             if ($post_date > $current_time) {
+                continue;
+            }
+        }
+
+        if ($category_filter !== '') {
+            $cats = array_map('mb_strtolower', $post_data['categories'] ?? []);
+            if (!in_array(mb_strtolower($category_filter), $cats, true)) {
+                continue;
+            }
+        }
+
+        if ($tag_filter !== '') {
+            $tags = array_map('mb_strtolower', $post_data['tags'] ?? []);
+            if (!in_array(mb_strtolower($tag_filter), $tags, true)) {
                 continue;
             }
         }
@@ -108,16 +118,392 @@ function get_posts($page = 1, $per_page = 10, $status = 'published')
         $all_posts[] = $post_data;
     }
 
-    // Sort by date (newest first)
     usort($all_posts, function ($a, $b) {
         return strtotime($b['date'] ?? '1970-01-01') - strtotime($a['date'] ?? '1970-01-01');
     });
 
-    // Pagination
     $offset = ($page - 1) * $per_page;
-    $posts = array_slice($all_posts, $offset, $per_page);
+    return array_slice($all_posts, $offset, $per_page);
+}
 
-    return $posts;
+/**
+ * Count posts with optional category/tag filters
+ */
+function count_posts_filtered($status = 'published', $category = '', $tag = '')
+{
+    $posts_dir = CONTENT_DIR . 'posts/';
+    if (!file_exists($posts_dir)) {
+        return 0;
+    }
+
+    $count = 0;
+    $current_time = time();
+    $category_filter = trim($category);
+    $tag_filter = trim($tag);
+
+    foreach (glob($posts_dir . '*.json') as $file) {
+        $post_data = json_decode(file_get_contents($file), true);
+        if (!$post_data || ($post_data['status'] ?? '') !== $status) {
+            continue;
+        }
+        if ($status === 'published') {
+            $post_date = isset($post_data['date']) ? strtotime($post_data['date']) : 0;
+            if ($post_date > $current_time) {
+                continue;
+            }
+        }
+        if ($category_filter !== '') {
+            $cats = array_map('mb_strtolower', $post_data['categories'] ?? []);
+            if (!in_array(mb_strtolower($category_filter), $cats, true)) {
+                continue;
+            }
+        }
+        if ($tag_filter !== '') {
+            $tags = array_map('mb_strtolower', $post_data['tags'] ?? []);
+            if (!in_array(mb_strtolower($tag_filter), $tags, true)) {
+                continue;
+            }
+        }
+        $count++;
+    }
+
+    return $count;
+}
+
+/**
+ * Collect unique categories from all posts
+ */
+function collect_all_categories(): array
+{
+    $categories = [];
+    foreach (all_posts() as $post) {
+        foreach ($post['categories'] ?? [] as $cat) {
+            $cat = trim((string) $cat);
+            if ($cat !== '') {
+                $categories[$cat] = true;
+            }
+        }
+    }
+    $list = array_keys($categories);
+    natcasesort($list);
+    return array_values($list);
+}
+
+/**
+ * Plain text from post body for word count / read time
+ */
+function post_plain_text(array $post): string
+{
+    $content_type = $post['content_type'] ?? (isset($post['content_markdown']) ? 'markdown' : 'html');
+    if ($content_type === 'html') {
+        $raw = $post['content_html'] ?? $post['content'] ?? '';
+    } else {
+        $raw = $post['content_markdown'] ?? $post['content'] ?? '';
+    }
+    return trim(strip_tags((string) $raw));
+}
+
+/**
+ * Word count for a post
+ */
+function post_word_count(array $post): int
+{
+    $text = post_plain_text($post);
+    if ($text === '') {
+        return 0;
+    }
+    return str_word_count($text);
+}
+
+/**
+ * Estimated read time in minutes (200 wpm)
+ */
+function post_read_time_minutes(array $post): int
+{
+    $words = post_word_count($post);
+    return max(1, (int) ceil($words / 200));
+}
+
+/**
+ * SEO field helpers with fallbacks
+ */
+function post_meta_title(array $post): string
+{
+    $seo = $post['seo'] ?? [];
+    if (!empty($seo['meta_title'])) {
+        return (string) $seo['meta_title'];
+    }
+    return (string) ($post['title'] ?? '');
+}
+
+function post_meta_description(array $post, string $html_fallback = ''): string
+{
+    $seo = $post['seo'] ?? [];
+    if (!empty($seo['meta_description'])) {
+        return (string) $seo['meta_description'];
+    }
+    if (!empty($post['excerpt'])) {
+        return (string) $post['excerpt'];
+    }
+    if ($html_fallback !== '') {
+        return substr(strip_tags($html_fallback), 0, 160);
+    }
+    return '';
+}
+
+function post_canonical_url(array $post): string
+{
+    $seo = $post['seo'] ?? [];
+    if (!empty($seo['canonical_url'])) {
+        return (string) $seo['canonical_url'];
+    }
+    return rtrim(BASE_URL, '/') . '/' . rawurlencode($post['slug'] ?? '');
+}
+
+function post_robots_index(array $post): bool
+{
+    $robots = $post['seo']['robots'] ?? 'index';
+    return $robots !== 'noindex';
+}
+
+function post_og_title(array $post): string
+{
+    $og = $post['og'] ?? [];
+    if (!empty($og['title'])) {
+        return (string) $og['title'];
+    }
+    return post_meta_title($post);
+}
+
+function post_og_description(array $post, string $html_fallback = ''): string
+{
+    $og = $post['og'] ?? [];
+    if (!empty($og['description'])) {
+        return (string) $og['description'];
+    }
+    return post_meta_description($post, $html_fallback);
+}
+
+/**
+ * Featured / thumbnail image URL for a post.
+ */
+function post_featured_image_url(array $post): string
+{
+    return trim((string) ($post['meta']['image'] ?? ''));
+}
+
+/**
+ * OG image: dedicated OG upload if set, otherwise featured thumbnail.
+ */
+function post_og_image(array $post): string
+{
+    $og = $post['og'] ?? [];
+    $dedicated = trim((string) ($og['image'] ?? ''));
+    $featured = post_featured_image_url($post);
+
+    if ($dedicated !== '' && !empty($og['image_custom'])) {
+        return $dedicated;
+    }
+
+    if ($dedicated !== '' && str_contains($dedicated, '/uploads/og/')) {
+        return $dedicated;
+    }
+
+    if ($featured !== '') {
+        return $featured;
+    }
+
+    return $dedicated;
+}
+
+function post_use_twitter_card(array $post): bool
+{
+    return !isset($post['og']['twitter_card']) || $post['og']['twitter_card'] !== false;
+}
+
+function post_sitemap_priority(array $post): float
+{
+    $p = $post['sitemap_priority'] ?? 0.9;
+    $p = is_numeric($p) ? (float) $p : 0.9;
+    return max(0.1, min(1.0, $p));
+}
+
+/**
+ * Related posts by slug list (published only)
+ */
+function get_related_posts(array $post, int $limit = 3): array
+{
+    $slugs = $post['related_posts'] ?? [];
+    if (!is_array($slugs) || $slugs === []) {
+        return [];
+    }
+    $current = $post['slug'] ?? '';
+    $related = [];
+    foreach ($slugs as $slug) {
+        $slug = trim((string) $slug);
+        if ($slug === '' || $slug === $current) {
+            continue;
+        }
+        $p = get_post($slug);
+        if ($p && ($p['status'] ?? '') === 'published') {
+            $related[] = $p;
+        }
+        if (count($related) >= $limit) {
+            break;
+        }
+    }
+    return $related;
+}
+
+/**
+ * Build table of contents HTML from H2/H3 and inject heading ids
+ */
+function build_table_of_contents(string $html): array
+{
+    $used_ids = [];
+    $items = [];
+
+    $html = preg_replace_callback(
+        '/<h([23])(\s[^>]*)?>(.*?)<\/h\1>/is',
+        function ($m) use (&$used_ids, &$items) {
+            $level = (int) $m[1];
+            $inner = $m[3];
+            $text = trim(strip_tags($inner));
+            if ($text === '') {
+                return $m[0];
+            }
+            $base = preg_replace('/[^a-z0-9]+/i', '-', mb_strtolower($text));
+            $base = trim($base, '-') ?: 'section';
+            $id = $base;
+            $n = 2;
+            while (isset($used_ids[$id])) {
+                $id = $base . '-' . $n;
+                $n++;
+            }
+            $used_ids[$id] = true;
+            $items[] = ['level' => $level, 'text' => $text, 'id' => $id];
+            $attrs = $m[2] ?? '';
+            if (stripos($attrs, 'id=') === false) {
+                $attrs .= ' id="' . htmlspecialchars($id, ENT_QUOTES, 'UTF-8') . '"';
+            }
+            return '<h' . $level . $attrs . '>' . $inner . '</h' . $level . '>';
+        },
+        $html
+    );
+
+    if ($items === []) {
+        return ['html' => $html, 'toc' => ''];
+    }
+
+    $toc = '<nav class="post-toc mb-4 p-3 border rounded" aria-label="Table of contents"><h2 class="h6 mb-2">Table of contents</h2><ol class="mb-0">';
+    foreach ($items as $item) {
+        $indent = $item['level'] === 3 ? ' class="ms-3"' : '';
+        $toc .= '<li' . $indent . '><a href="#' . htmlspecialchars($item['id'], ENT_QUOTES, 'UTF-8') . '">'
+            . htmlspecialchars($item['text'], ENT_QUOTES, 'UTF-8') . '</a></li>';
+    }
+    $toc .= '</ol></nav>';
+
+    return ['html' => $html, 'toc' => $toc];
+}
+
+/**
+ * Breadcrumb HTML for a post
+ */
+function render_post_breadcrumbs(array $post): string
+{
+    $home = rtrim(BASE_URL, '/') . '/';
+    $blogs = rtrim(BASE_URL, '/') . '/blogs';
+    $title = htmlspecialchars($post['title'] ?? '', ENT_QUOTES, 'UTF-8');
+    $html = '<nav aria-label="breadcrumb" class="mb-3"><ol class="breadcrumb">';
+    $html .= '<li class="breadcrumb-item"><a href="' . htmlspecialchars($home, ENT_QUOTES, 'UTF-8') . '">Home</a></li>';
+    $html .= '<li class="breadcrumb-item"><a href="' . htmlspecialchars($blogs, ENT_QUOTES, 'UTF-8') . '">Blog</a></li>';
+    if (!empty($post['categories'][0])) {
+        $cat = $post['categories'][0];
+        $html .= '<li class="breadcrumb-item"><a href="' . htmlspecialchars($home . '?category=' . urlencode($cat), ENT_QUOTES, 'UTF-8') . '">'
+            . htmlspecialchars($cat, ENT_QUOTES, 'UTF-8') . '</a></li>';
+    }
+    $html .= '<li class="breadcrumb-item active" aria-current="page">' . $title . '</li>';
+    $html .= '</ol></nav>';
+    return $html;
+}
+
+/**
+ * JSON-LD breadcrumb schema
+ */
+function post_breadcrumb_schema(array $post): array
+{
+    $items = [
+        [
+            '@type' => 'ListItem',
+            'position' => 1,
+            'name' => 'Home',
+            'item' => rtrim(BASE_URL, '/') . '/'
+        ],
+        [
+            '@type' => 'ListItem',
+            'position' => 2,
+            'name' => 'Blog',
+            'item' => rtrim(BASE_URL, '/') . '/blogs'
+        ]
+    ];
+    $pos = 3;
+    if (!empty($post['categories'][0])) {
+        $cat = $post['categories'][0];
+        $items[] = [
+            '@type' => 'ListItem',
+            'position' => $pos++,
+            'name' => $cat,
+            'item' => rtrim(BASE_URL, '/') . '/?category=' . rawurlencode($cat)
+        ];
+    }
+    $items[] = [
+        '@type' => 'ListItem',
+        'position' => $pos,
+        'name' => $post['title'] ?? '',
+        'item' => post_canonical_url($post)
+    ];
+    return [
+        '@context' => 'https://schema.org',
+        '@type' => 'BreadcrumbList',
+        'itemListElement' => $items
+    ];
+}
+
+/**
+ * Site favicon URL from settings
+ */
+function site_favicon_url(): string
+{
+    $settings = load_settings();
+    return (string) ($settings['favicon_url'] ?? '');
+}
+
+/**
+ * Whether updater should skip index.php and post.php
+ */
+function should_preserve_custom_templates(): bool
+{
+    $root = dirname(__FILE__);
+    if (file_exists($root . '/.preserve-custom-templates')) {
+        return true;
+    }
+    if (defined('INTERFACE_MODE') && (string) constant('INTERFACE_MODE') === 'custom') {
+        return true;
+    }
+    $settings = load_settings();
+    if (($settings['interface_mode'] ?? '') === 'custom') {
+        return true;
+    }
+    return !empty($settings['preserve_custom_templates']);
+}
+
+/**
+ * Mark project to preserve custom index.php / post.php on updates
+ */
+function enable_custom_template_preservation(): bool
+{
+    $marker = dirname(__FILE__) . '/.preserve-custom-templates';
+    return (bool) file_put_contents($marker, date('c') . "\n");
 }
 
 /**
@@ -379,7 +765,10 @@ function rebuild_index()
             'tags' => $data['tags'] ?? [],
             'categories' => $data['categories'] ?? [],
             'author' => $data['author'] ?? (defined('ADMIN_USERNAME') ? constant('ADMIN_USERNAME') : 'Admin'),
-            'meta' => $data['meta'] ?? []
+            'meta' => $data['meta'] ?? [],
+            'word_count' => $data['word_count'] ?? post_word_count($data),
+            'read_time' => $data['read_time'] ?? post_read_time_minutes($data),
+            'sitemap_priority' => $data['sitemap_priority'] ?? 0.9
         ];
     }
     // Sort newest first
