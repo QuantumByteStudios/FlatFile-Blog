@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 
 		if (contentTypeSelect.value === 'html') {
-			contentHelp.innerHTML = '<strong>HTML supported:</strong> Use only &lt;b&gt;, &lt;i&gt;, &lt;u&gt;, &lt;br&gt;.';
+			contentHelp.innerHTML = '<strong>HTML supported:</strong> Use &lt;p&gt;, &lt;h2&gt;, &lt;h3&gt;, &lt;b&gt;, &lt;i&gt;, &lt;u&gt;, &lt;a&gt;, &lt;ul&gt;, etc.';
 			contentTextarea.placeholder = 'Write your post content in HTML...';
 			return;
 		}
