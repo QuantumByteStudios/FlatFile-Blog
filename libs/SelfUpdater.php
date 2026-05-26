@@ -51,34 +51,31 @@ class SelfUpdater
         $projectRoot = dirname(__DIR__);
         $gitAttemptLogs = [];
 
-        // ZIP deploy is primary: always overlays published GitHub files with update excludes.
-        // Git-only updates could report success ("already up to date") while PHP files on disk stay stale.
-        $zipResult = self::updateViaZipArchive($owner, $name, $resolvedBranch, $projectRoot);
-        if (!empty($zipResult['logs'])) {
-            $gitAttemptLogs = $zipResult['logs'];
-        }
-        if ($zipResult['success']) {
-            self::postUpdateCleanup($projectRoot);
-            return $zipResult;
-        }
-
-        // Fallback to git when ZIP download/extract fails (e.g. network, ZipArchive)
+        // Prefer git (fetch/merge or shallow clone + copy) — matches hosted installs that track GitHub.
         $git = self::findGitBinary();
         if ($git) {
             $repoUrl = self::normalizeRepoUrl($owner, $name);
             $gitResult = self::updateViaGit($git, $projectRoot, $repoUrl, $resolvedBranch);
             if (!empty($gitResult['logs'])) {
-                $gitAttemptLogs = array_merge($gitAttemptLogs, $gitResult['logs']);
+                $gitAttemptLogs = $gitResult['logs'];
             }
             if ($gitResult['success']) {
                 self::postUpdateCleanup($projectRoot);
                 $gitResult['mode'] = 'git';
-                $gitResult['logs'] = $gitAttemptLogs;
                 return $gitResult;
             }
         }
 
-        $zipResult['logs'] = $gitAttemptLogs;
+        // Fallback: download branch ZIP from GitHub when git is unavailable or blocked.
+        $zipResult = self::updateViaZipArchive($owner, $name, $resolvedBranch, $projectRoot);
+        if (!empty($zipResult['logs'])) {
+            $zipResult['logs'] = array_merge($gitAttemptLogs, $zipResult['logs']);
+        } else {
+            $zipResult['logs'] = $gitAttemptLogs;
+        }
+        if ($zipResult['success']) {
+            self::postUpdateCleanup($projectRoot);
+        }
         return $zipResult;
     }
 
@@ -111,8 +108,13 @@ class SelfUpdater
             ]];
         }
 
-        $dirEntries = glob($extractDir . '*', GLOB_ONLYDIR);
-        $sourceDir = $dirEntries && is_dir($dirEntries[0]) ? rtrim($dirEntries[0], '\\/') : rtrim($extractDir, '\\/');
+        $sourceDir = self::resolveExtractedSourceDir($extractDir);
+        if ($sourceDir === null) {
+            self::rrmdir($tmpDir);
+            return ['success' => false, 'error' => 'Could not find extracted repository folder', 'mode' => 'zip', 'logs' => [
+                ['step' => 'resolve', 'dir' => $extractDir, 'error' => 'no source directory']
+            ]];
+        }
 
         $excludes = self::getUpdateExcludes();
         $copy = self::copyRecursive($sourceDir, $projectRoot, $excludes);
@@ -122,21 +124,17 @@ class SelfUpdater
             ]];
         }
 
-        $removedInstall = false;
-        $installPath = $projectRoot . '/install.php';
-        if (file_exists($installPath)) {
-            $removedInstall = @unlink($installPath);
+        $filesCopied = (int) ($copy['files_copied'] ?? 0);
+        if ($filesCopied < 1) {
+            self::rrmdir($tmpDir);
+            return ['success' => false, 'error' => 'No files were copied from the update archive. Check server curl/zip support or use git on the host.', 'mode' => 'zip', 'logs' => [
+                ['step' => 'copy', 'from' => $sourceDir, 'to' => $projectRoot, 'files_copied' => 0]
+            ]];
         }
 
         self::rrmdir($tmpDir);
 
-        $filesCopied = (int) ($copy['files_copied'] ?? 0);
-        $message = 'Updated from ' . $owner . '/' . $name . '@' . $branch;
-        if ($filesCopied > 0) {
-            $message .= ' (' . $filesCopied . ' file(s) applied)';
-        } else {
-            $message .= ' (release already matches your install; PHP cache was cleared)';
-        }
+        $message = 'Updated from ' . $owner . '/' . $name . '@' . $branch . ' (' . $filesCopied . ' file(s) applied)';
 
         return [
             'success' => true,
@@ -147,8 +145,7 @@ class SelfUpdater
                 ['step' => 'download', 'url' => $downloadUrl, 'ok' => true],
                 ['step' => 'unzip', 'zip' => $zipFile, 'ok' => true],
                 ['step' => 'copy', 'from' => $sourceDir, 'to' => $projectRoot, 'ok' => true, 'files_copied' => $filesCopied],
-                ['step' => 'cleanup', 'dir' => $tmpDir, 'ok' => true],
-                ['step' => 'post', 'action' => 'remove install.php', 'ok' => $removedInstall]
+                ['step' => 'cleanup', 'dir' => $tmpDir, 'ok' => true]
             ]
         ];
     }
@@ -240,11 +237,6 @@ class SelfUpdater
         if (!$copy['success']) {
             return $copy;
         }
-        // Ensure install.php is not present post-update
-        $installPath = dirname(__DIR__) . '/install.php';
-        if (file_exists($installPath)) {
-            @unlink($installPath);
-        }
         self::rrmdir($tmpDir);
         self::postUpdateCleanup(dirname(__DIR__));
         return ['success' => true, 'message' => 'Updated from URL', 'files_copied' => (int) ($copy['files_copied'] ?? 0)];
@@ -267,11 +259,6 @@ class SelfUpdater
         $excludes = self::getUpdateExcludes();
         $copy = self::copyRecursive($sourceDir, dirname(__DIR__), $excludes);
         if (!$copy['success']) return $copy;
-        // Ensure install.php is not present post-update
-        $installPath = dirname(__DIR__) . '/install.php';
-        if (file_exists($installPath)) {
-            @unlink($installPath);
-        }
         self::rrmdir($tmpDir);
         self::postUpdateCleanup(dirname(__DIR__));
         return ['success' => true, 'message' => 'Updated from uploaded ZIP', 'files_copied' => (int) ($copy['files_copied'] ?? 0)];
@@ -359,8 +346,6 @@ class SelfUpdater
         }
 
         $excludes = self::getUpdateExcludes();
-        unset($excludes[array_search('/install.php', $excludes, true)]); // token updates may still ship install.php
-
         $copy = self::copyRecursive($sourceDir, dirname(__DIR__), $excludes);
         if (!$copy['success']) {
             return $copy;
@@ -400,22 +385,51 @@ class SelfUpdater
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_FILE, $fp);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 300);
         curl_setopt($ch, CURLOPT_HTTPHEADER, array_filter([
             'User-Agent: FlatFile-Blog-Updater',
             $token ? ('Authorization: token ' . $token) : ''
         ]));
         $ok = curl_exec($ch);
-        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $err = curl_error($ch);
-        curl_close($ch);
+        if (is_resource($ch)) {
+            curl_close($ch);
+        }
         fclose($fp);
 
         if ($ok === false || $code < 200 || $code >= 300) {
             @unlink($dest);
             return ['success' => false, 'error' => 'Download failed: HTTP ' . $code . ($err ? (' - ' . $err) : '')];
         }
+
+        $size = @filesize($dest);
+        if ($size === false || $size < 1024) {
+            @unlink($dest);
+            return ['success' => false, 'error' => 'Download failed: archive empty or too small (' . (int) $size . ' bytes)'];
+        }
+
         return ['success' => true];
+    }
+
+    /**
+     * Locate the top-level folder inside an extracted GitHub zip (e.g. FlatFile-Blog-main).
+     */
+    private static function resolveExtractedSourceDir(string $extractDir): ?string
+    {
+        $extractDir = rtrim($extractDir, '\\/') . '/';
+        $dirEntries = glob($extractDir . '*', GLOB_ONLYDIR);
+        if ($dirEntries && is_dir($dirEntries[0])) {
+            return rtrim($dirEntries[0], '\\/');
+        }
+
+        // Flat archive: treat extract root as source if it contains project markers.
+        if (is_file($extractDir . 'functions.php') || is_dir($extractDir . 'admin')) {
+            return rtrim($extractDir, '\\/');
+        }
+
+        return null;
     }
 
     private static function findGitBinary()
@@ -510,13 +524,14 @@ class SelfUpdater
             $ff = self::runProcess($git . ' merge --ff-only origin/' . escapeshellarg($branch), $root);
             $logs[] = $ff;
             if ($ff['code'] !== 0) {
-                return ['success' => false, 'error' => 'git fast-forward failed: local changes or divergence detected', 'logs' => $logs];
-            }
-            // Remove install.php if present after reset
-            $installPath = $root . DIRECTORY_SEPARATOR . 'install.php';
-            if (file_exists($installPath)) {
-                $rmOk = @unlink($installPath);
-                $logs[] = ['command' => 'remove install.php', 'code' => $rmOk ? 0 : 1, 'stdout' => $rmOk ? 'removed' : '', 'stderr' => $rmOk ? '' : 'failed'];
+                // Diverged or dirty tree: shallow-clone upstream and overlay files (preserves excludes).
+                $overlay = self::updateViaShallowCloneOverlay($git, $root, $repoUrl, $branch, $logs);
+                if ($overlay['success']) {
+                    self::postUpdateCleanup($root);
+                    $overlay['mode'] = 'git';
+                    return $overlay;
+                }
+                return ['success' => false, 'error' => 'git fast-forward failed: ' . trim($ff['stderr'] ?: 'local changes or divergence detected'), 'logs' => $logs];
             }
             // Optional: submodules
             $sub = self::runProcess($git . ' submodule update --init --recursive', $root);
@@ -524,7 +539,14 @@ class SelfUpdater
             return ['success' => true, 'message' => 'Updated via git to branch ' . $branch . ' (PHP cache cleared on next request)', 'logs' => $logs];
         }
 
-        // Not a git repo: try shallow clone to temp and copy over (non-destructive)
+        return self::updateViaShallowCloneOverlay($git, $root, $repoUrl, $branch, $logs);
+    }
+
+    /**
+     * Shallow-clone public repo to a temp dir and copy into project root (respecting excludes).
+     */
+    private static function updateViaShallowCloneOverlay($git, string $root, string $repoUrl, string $branch, array $logs): array
+    {
         $tmpDir = CONTENT_DIR . 'tmp_updater_git/';
         $cloneDir = rtrim($tmpDir, '\\/') . DIRECTORY_SEPARATOR . 'clone';
         self::rrmdir($tmpDir);
@@ -534,26 +556,24 @@ class SelfUpdater
         $logs[] = $clone;
         if ($clone['code'] !== 0) {
             self::rrmdir($tmpDir);
-            return ['success' => false, 'error' => 'git clone failed: ' . $clone['stderr'], 'logs' => $logs];
+            return ['success' => false, 'error' => 'git clone failed: ' . trim($clone['stderr'] ?: $clone['stdout'] ?: 'unknown error'), 'logs' => $logs];
         }
         $excludes = self::getUpdateExcludes();
         $copy = self::copyRecursive($cloneDir, $root, $excludes);
         self::rrmdir($tmpDir);
         if (!$copy['success']) {
-            $logs[] = ['command' => 'copy', 'code' => $copy['success'] ? 0 : 1, 'stdout' => '', 'stderr' => $copy['error'] ?? 'copy error'];
+            $logs[] = ['command' => 'copy', 'code' => 1, 'stdout' => '', 'stderr' => $copy['error'] ?? 'copy error'];
             return ['success' => false, 'error' => ($copy['error'] ?? 'Copy failed'), 'logs' => $logs];
         }
-        // Remove install.php if present after copy
-        $installPath = $root . DIRECTORY_SEPARATOR . 'install.php';
-        if (file_exists($installPath)) {
-            $rmOk = @unlink($installPath);
-            $logs[] = ['command' => 'remove install.php', 'code' => $rmOk ? 0 : 1, 'stdout' => $rmOk ? 'removed' : '', 'stderr' => $rmOk ? '' : 'failed'];
+        $filesCopied = (int) ($copy['files_copied'] ?? 0);
+        if ($filesCopied < 1) {
+            return ['success' => false, 'error' => 'git clone succeeded but no files were copied', 'logs' => $logs];
         }
-        $logs[] = ['command' => 'copy', 'code' => 0, 'stdout' => 'copied to ' . $root, 'stderr' => ''];
+        $logs[] = ['command' => 'copy', 'code' => 0, 'stdout' => 'copied ' . $filesCopied . ' file(s) to ' . $root, 'stderr' => ''];
         return [
             'success' => true,
-            'message' => 'Updated via git clone to branch ' . $branch . ' (' . (int) ($copy['files_copied'] ?? 0) . ' file(s) applied)',
-            'files_copied' => (int) ($copy['files_copied'] ?? 0),
+            'message' => 'Updated via git clone from ' . $repoUrl . ' @ ' . $branch . ' (' . $filesCopied . ' file(s) applied)',
+            'files_copied' => $filesCopied,
             'logs' => $logs
         ];
     }
@@ -564,6 +584,10 @@ class SelfUpdater
             return ['success' => false, 'error' => 'PHP ZipArchive not available'];
         }
         $zip = new ZipArchive();
+        $zipSize = @filesize($zipFile);
+        if ($zipSize === false || $zipSize < 1024) {
+            return ['success' => false, 'error' => 'Downloaded archive is empty or invalid'];
+        }
         if ($zip->open($zipFile) !== true) {
             return ['success' => false, 'error' => 'Failed to open zip'];
         }
@@ -645,7 +669,6 @@ class SelfUpdater
             '/logs/',
             '/config.php',
             '/content/settings.json',
-            '/install.php',
             '/.preserve-custom-templates'
         ];
 

@@ -182,13 +182,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $branch = 'main';
                 }
                 $res = SelfUpdater::updateFromPublicRepo($repo, $branch);
-                // Remove install.php regardless of updater path
                 $extraLogs = [];
-                $installPath = dirname(__DIR__) . '/install.php';
-                if (file_exists($installPath)) {
-                    $rmOk = @unlink($installPath);
-                    $extraLogs[] = ['step' => 'post', 'action' => 'remove install.php (controller)', 'ok' => $rmOk];
-                }
 
                 // Save last update time if successful
                 if ($res['success']) {
@@ -426,9 +420,9 @@ $available_backups = class_exists('BlogBackup') ? BlogBackup::listBackups() : []
                                     </form>
 
                                     <p class="small text-muted mb-0">
-                                        Downloads the latest release ZIP from your configured GitHub repo and branch
-                                        (Settings), then applies it while keeping content, uploads, logs, and config.
-                                        Hard-refresh the browser if the admin UI still looks old after updating.
+                                        Pulls the latest code from
+                                        <a href="https://github.com/QuantumByteStudios/FlatFile-Blog" target="_blank" rel="noopener">QuantumByteStudios/FlatFile-Blog</a>
+                                        (git clone or ZIP fallback) while keeping content, uploads, logs, and config.
                                     </p>
                                 </div>
                             </div>
