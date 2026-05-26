@@ -24,9 +24,6 @@ $has_custom_og = !empty($og['image_custom']) || (!empty($og['image']) && str_con
             <button type="button" class="btn btn-outline-primary" id="fill-meta-from-post" title="Copy H1 title and excerpt into meta fields">
                 <i class="bi bi-arrow-down-circle"></i> Fill from post
             </button>
-            <button type="button" class="btn btn-outline-primary" id="fill-og-from-meta" title="Copy meta title and description into OG fields">
-                <i class="bi bi-share"></i> OG from meta
-            </button>
         </div>
     </div>
     <div class="card-body">
@@ -71,8 +68,13 @@ $has_custom_og = !empty($og['image_custom']) || (!empty($og['image']) && str_con
 </div>
 
 <div class="card mb-4">
-    <div class="card-header">
+    <div class="card-header bg-primary bg-opacity-10 d-flex justify-content-between align-items-center flex-wrap gap-2">
         <h5 class="mb-0"><i class="bi bi-share me-2"></i>Open Graph / Social Sharing</h5>
+        <div class="btn-group btn-group-sm">
+            <button type="button" class="btn btn-outline-primary" id="fill-og-from-meta" title="Copy meta title and description into OG fields">
+                <i class="bi bi-share"></i> Fill from SEO &amp; Meta Tags
+            </button>
+        </div>
     </div>
     <div class="card-body">
         <div class="row g-3">

@@ -48,24 +48,45 @@ class SelfUpdater
             }
         }
 
-        // Try git-based update first if possible
         $projectRoot = dirname(__DIR__);
-        $git = self::findGitBinary();
         $gitAttemptLogs = [];
+
+        // ZIP deploy is primary: always overlays published GitHub files with update excludes.
+        // Git-only updates could report success ("already up to date") while PHP files on disk stay stale.
+        $zipResult = self::updateViaZipArchive($owner, $name, $resolvedBranch, $projectRoot);
+        if (!empty($zipResult['logs'])) {
+            $gitAttemptLogs = $zipResult['logs'];
+        }
+        if ($zipResult['success']) {
+            self::postUpdateCleanup($projectRoot);
+            return $zipResult;
+        }
+
+        // Fallback to git when ZIP download/extract fails (e.g. network, ZipArchive)
+        $git = self::findGitBinary();
         if ($git) {
             $repoUrl = self::normalizeRepoUrl($owner, $name);
             $gitResult = self::updateViaGit($git, $projectRoot, $repoUrl, $resolvedBranch);
             if (!empty($gitResult['logs'])) {
-                $gitAttemptLogs = $gitResult['logs'];
+                $gitAttemptLogs = array_merge($gitAttemptLogs, $gitResult['logs']);
             }
             if ($gitResult['success']) {
-                // Ensure mode is marked
+                self::postUpdateCleanup($projectRoot);
                 $gitResult['mode'] = 'git';
-                return $gitResult; // Updated via git
+                $gitResult['logs'] = $gitAttemptLogs;
+                return $gitResult;
             }
-            // If git failed, fall back to ZIP method below and include git logs
         }
 
+        $zipResult['logs'] = $gitAttemptLogs;
+        return $zipResult;
+    }
+
+    /**
+     * Download branch ZIP from GitHub codeload and copy into project root (respecting excludes).
+     */
+    private static function updateViaZipArchive(string $owner, string $name, string $branch, string $projectRoot): array
+    {
         $tmpDir = CONTENT_DIR . 'tmp_updater/';
         $zipFile = $tmpDir . 'update.zip';
         $extractDir = $tmpDir . 'extract/';
@@ -75,48 +96,103 @@ class SelfUpdater
             @mkdir($tmpDir, 0755, true);
         }
 
-        // Use codeload which doesn't require auth
-        $downloadUrl = 'https://codeload.github.com/' . rawurlencode($owner) . '/' . rawurlencode($name) . '/zip/refs/heads/' . rawurlencode($resolvedBranch);
+        $downloadUrl = 'https://codeload.github.com/' . rawurlencode($owner) . '/' . rawurlencode($name) . '/zip/refs/heads/' . rawurlencode($branch);
         $dl = self::download($downloadUrl, $zipFile, '');
         if (!$dl['success']) {
-            return ['success' => false, 'error' => $dl['error'] ?? 'Download failed', 'mode' => 'zip', 'logs' => array_merge($gitAttemptLogs, [
+            return ['success' => false, 'error' => $dl['error'] ?? 'Download failed', 'mode' => 'zip', 'logs' => [
                 ['step' => 'download', 'url' => $downloadUrl, 'error' => $dl['error'] ?? 'download error']
-            ])];
+            ]];
         }
 
         $ok = self::unzip($zipFile, $extractDir);
         if (!$ok['success']) {
-            return ['success' => false, 'error' => $ok['error'] ?? 'Unzip failed', 'mode' => 'zip', 'logs' => array_merge($gitAttemptLogs, [
+            return ['success' => false, 'error' => $ok['error'] ?? 'Unzip failed', 'mode' => 'zip', 'logs' => [
                 ['step' => 'unzip', 'zip' => $zipFile, 'error' => $ok['error'] ?? 'unzip error']
-            ])];
+            ]];
         }
 
-        // Find source directory
         $dirEntries = glob($extractDir . '*', GLOB_ONLYDIR);
         $sourceDir = $dirEntries && is_dir($dirEntries[0]) ? rtrim($dirEntries[0], '\\/') : rtrim($extractDir, '\\/');
 
         $excludes = self::getUpdateExcludes();
-        $copy = self::copyRecursive($sourceDir, dirname(__DIR__), $excludes);
+        $copy = self::copyRecursive($sourceDir, $projectRoot, $excludes);
         if (!$copy['success']) {
-            return ['success' => false, 'error' => $copy['error'] ?? 'Copy failed', 'mode' => 'zip', 'logs' => array_merge($gitAttemptLogs, [
-                ['step' => 'copy', 'from' => $sourceDir, 'to' => dirname(__DIR__), 'error' => $copy['error'] ?? 'copy error']
-            ])];
+            return ['success' => false, 'error' => $copy['error'] ?? 'Copy failed', 'mode' => 'zip', 'logs' => [
+                ['step' => 'copy', 'from' => $sourceDir, 'to' => $projectRoot, 'error' => $copy['error'] ?? 'copy error']
+            ]];
         }
-        // Ensure install.php is not present post-update
+
         $removedInstall = false;
-        $installPath = dirname(__DIR__) . '/install.php';
+        $installPath = $projectRoot . '/install.php';
         if (file_exists($installPath)) {
             $removedInstall = @unlink($installPath);
         }
 
         self::rrmdir($tmpDir);
-        return ['success' => true, 'message' => 'Updated from ' . $owner . '/' . $name . '@' . $resolvedBranch, 'mode' => 'zip', 'logs' => array_merge($gitAttemptLogs, [
-            ['step' => 'download', 'url' => $downloadUrl, 'ok' => true],
-            ['step' => 'unzip', 'zip' => $zipFile, 'ok' => true],
-            ['step' => 'copy', 'from' => $sourceDir, 'to' => dirname(__DIR__), 'ok' => true],
-            ['step' => 'cleanup', 'dir' => $tmpDir, 'ok' => true],
-            ['step' => 'post', 'action' => 'remove install.php', 'ok' => $removedInstall]
-        ])];
+
+        $filesCopied = (int) ($copy['files_copied'] ?? 0);
+        $message = 'Updated from ' . $owner . '/' . $name . '@' . $branch;
+        if ($filesCopied > 0) {
+            $message .= ' (' . $filesCopied . ' file(s) applied)';
+        } else {
+            $message .= ' (release already matches your install; PHP cache was cleared)';
+        }
+
+        return [
+            'success' => true,
+            'message' => $message,
+            'mode' => 'zip',
+            'files_copied' => $filesCopied,
+            'logs' => [
+                ['step' => 'download', 'url' => $downloadUrl, 'ok' => true],
+                ['step' => 'unzip', 'zip' => $zipFile, 'ok' => true],
+                ['step' => 'copy', 'from' => $sourceDir, 'to' => $projectRoot, 'ok' => true, 'files_copied' => $filesCopied],
+                ['step' => 'cleanup', 'dir' => $tmpDir, 'ok' => true],
+                ['step' => 'post', 'action' => 'remove install.php', 'ok' => $removedInstall]
+            ]
+        ];
+    }
+
+    /**
+     * Clear PHP stat cache and OPcache so updated admin/templates load immediately.
+     */
+    public static function postUpdateCleanup(string $projectRoot): void
+    {
+        clearstatcache(true);
+
+        if (function_exists('opcache_reset')) {
+            @opcache_reset();
+            return;
+        }
+
+        if (!function_exists('opcache_invalidate')) {
+            return;
+        }
+
+        $paths = [
+            $projectRoot . '/functions.php',
+            $projectRoot . '/admin',
+            $projectRoot . '/libs',
+            $projectRoot . '/assets',
+        ];
+
+        foreach ($paths as $path) {
+            if (is_file($path)) {
+                @opcache_invalidate($path, true);
+                continue;
+            }
+            if (!is_dir($path)) {
+                continue;
+            }
+            $iterator = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($path, RecursiveDirectoryIterator::SKIP_DOTS)
+            );
+            foreach ($iterator as $file) {
+                if ($file->isFile() && preg_match('/\.php$/i', $file->getFilename())) {
+                    @opcache_invalidate($file->getPathname(), true);
+                }
+            }
+        }
     }
     public static function updateFromURL($url, $checksum = '')
     {
@@ -170,7 +246,8 @@ class SelfUpdater
             @unlink($installPath);
         }
         self::rrmdir($tmpDir);
-        return ['success' => true, 'message' => 'Updated from URL'];
+        self::postUpdateCleanup(dirname(__DIR__));
+        return ['success' => true, 'message' => 'Updated from URL', 'files_copied' => (int) ($copy['files_copied'] ?? 0)];
     }
 
     public static function updateFromZipFile($zipPath)
@@ -196,7 +273,8 @@ class SelfUpdater
             @unlink($installPath);
         }
         self::rrmdir($tmpDir);
-        return ['success' => true, 'message' => 'Updated from uploaded ZIP'];
+        self::postUpdateCleanup(dirname(__DIR__));
+        return ['success' => true, 'message' => 'Updated from uploaded ZIP', 'files_copied' => (int) ($copy['files_copied'] ?? 0)];
     }
 
     public static function updateFromGitHub($repo, $branch, $token)
@@ -289,7 +367,12 @@ class SelfUpdater
         }
 
         self::rrmdir($tmpDir);
-        return ['success' => true, 'message' => 'Updated to latest from ' . $repo . '@' . $branch];
+        self::postUpdateCleanup(dirname(__DIR__));
+        return [
+            'success' => true,
+            'message' => 'Updated to latest from ' . $repo . '@' . $branch,
+            'files_copied' => (int) ($copy['files_copied'] ?? 0)
+        ];
     }
 
     private static function httpGetJson($url)
@@ -438,7 +521,7 @@ class SelfUpdater
             // Optional: submodules
             $sub = self::runProcess($git . ' submodule update --init --recursive', $root);
             $logs[] = $sub;
-            return ['success' => true, 'message' => 'Updated via git to branch ' . $branch, 'logs' => $logs];
+            return ['success' => true, 'message' => 'Updated via git to branch ' . $branch . ' (PHP cache cleared on next request)', 'logs' => $logs];
         }
 
         // Not a git repo: try shallow clone to temp and copy over (non-destructive)
@@ -467,7 +550,12 @@ class SelfUpdater
             $logs[] = ['command' => 'remove install.php', 'code' => $rmOk ? 0 : 1, 'stdout' => $rmOk ? 'removed' : '', 'stderr' => $rmOk ? '' : 'failed'];
         }
         $logs[] = ['command' => 'copy', 'code' => 0, 'stdout' => 'copied to ' . $root, 'stderr' => ''];
-        return ['success' => true, 'message' => 'Updated via git clone to branch ' . $branch, 'logs' => $logs];
+        return [
+            'success' => true,
+            'message' => 'Updated via git clone to branch ' . $branch . ' (' . (int) ($copy['files_copied'] ?? 0) . ' file(s) applied)',
+            'files_copied' => (int) ($copy['files_copied'] ?? 0),
+            'logs' => $logs
+        ];
     }
 
     private static function unzip($zipFile, $extractTo)
@@ -492,6 +580,7 @@ class SelfUpdater
     {
         $src = rtrim($src, '\/');
         $dst = rtrim($dst, '\/');
+        $filesCopied = 0;
         $iterator = new RecursiveIteratorIterator(
             new RecursiveDirectoryIterator($src, RecursiveDirectoryIterator::SKIP_DOTS),
             RecursiveIteratorIterator::SELF_FIRST
@@ -499,10 +588,8 @@ class SelfUpdater
         foreach ($iterator as $item) {
             $rel = str_replace($src, '', $item->getPathname());
             $rel = str_replace('\\', '/', $rel);
-            foreach ($excludes as $ex) {
-                if (stripos($rel, $ex) === 0) {
-                    continue 2;
-                }
+            if (self::pathIsExcluded($rel, $excludes)) {
+                continue;
             }
             $target = $dst . $rel;
             if ($item->isDir()) {
@@ -510,15 +597,41 @@ class SelfUpdater
                     @mkdir($target, 0755, true);
                 }
             } else {
-                // Ensure directory exists
                 $dir = dirname($target);
-                if (!is_dir($dir)) @mkdir($dir, 0755, true);
+                if (!is_dir($dir)) {
+                    @mkdir($dir, 0755, true);
+                }
                 if (!@copy($item->getPathname(), $target)) {
                     return ['success' => false, 'error' => 'Failed to copy ' . $rel];
                 }
+                $filesCopied++;
             }
         }
-        return ['success' => true];
+        return ['success' => true, 'files_copied' => $filesCopied];
+    }
+
+    /**
+     * Match exclude rules: directory prefixes (trailing slash) or exact file paths.
+     */
+    private static function pathIsExcluded(string $rel, array $excludes): bool
+    {
+        $rel = '/' . ltrim(str_replace('\\', '/', $rel), '/');
+        foreach ($excludes as $ex) {
+            $ex = str_replace('\\', '/', (string) $ex);
+            if ($ex === '') {
+                continue;
+            }
+            if (str_ends_with($ex, '/')) {
+                if (str_starts_with($rel, $ex)) {
+                    return true;
+                }
+                continue;
+            }
+            if ($rel === $ex) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

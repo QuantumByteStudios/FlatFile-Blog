@@ -160,7 +160,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                     }
                 }
-                $success_message = "Cache cleaned successfully ({$cleaned_count} files removed)";
+                if (class_exists('SelfUpdater')) {
+                    SelfUpdater::postUpdateCleanup(dirname(__DIR__));
+                }
+                $success_message = "Cache cleaned successfully ({$cleaned_count} file(s) removed; PHP opcode cache refreshed)";
                 break;
 
             case 'run_updater':
@@ -174,8 +177,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($repo === '') {
                     $repo = 'https://github.com/QuantumByteStudios/FlatFile-Blog';
                 }
-                // Always use public repo with main branch
-                $res = SelfUpdater::updateFromPublicRepo($repo, 'main');
+                $branch = trim((string) ($settings['updater_branch'] ?? 'main'));
+                if ($branch === '') {
+                    $branch = 'main';
+                }
+                $res = SelfUpdater::updateFromPublicRepo($repo, $branch);
                 // Remove install.php regardless of updater path
                 $extraLogs = [];
                 $installPath = dirname(__DIR__) . '/install.php';
@@ -420,7 +426,9 @@ $available_backups = class_exists('BlogBackup') ? BlogBackup::listBackups() : []
                                     </form>
 
                                     <p class="small text-muted mb-0">
-                                        Pulls latest code from GitHub main branch while keeping content, uploads, logs, and config.
+                                        Downloads the latest release ZIP from your configured GitHub repo and branch
+                                        (Settings), then applies it while keeping content, uploads, logs, and config.
+                                        Hard-refresh the browser if the admin UI still looks old after updating.
                                     </p>
                                 </div>
                             </div>
